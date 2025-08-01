@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clinic Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Custom Style -->
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .sidebar {
+            height: 100vh;
+            background: linear-gradient(to bottom, #007bff, #0056b3);
+            color: white;
+        }
+
+        .sidebar .nav-link {
+            color: white;
+            transition: background 0.3s ease;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+        }
+
+        .header {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-3px);
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2 sidebar p-3">
+            <div class="mb-4 text-center">
+                <img src="{{ asset('images/logo.jpeg') }}" alt="Logo" class="img-fluid" style="max-width: 120px;">
+            </div>
+            <nav class="nav flex-column">
+                <a href="#" class="nav-link active">Dashboard</a>
+                <a href="#" class="nav-link">EMR</a>
+                <a href="#" class="nav-link">Billing</a>
+                <a href="#" class="nav-link">Pharmacy</a>
+                <a href="#" class="nav-link">Settings</a>
+            </nav>
+        </div>
+
+        <!-- Main -->
+        <div class="col-md-9 col-lg-10 p-4">
+            <div class="header p-3 mb-4 d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Dashboard</h3>
+                <div>
+                    <span class="me-3">Welcome, Admin</span>
+                    <button class="btn btn-outline-primary btn-sm">Logout</button>
+                </div>
+            </div>
+
+            <!-- Cards -->
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">📁 EMR</h5>
+                            <p class="card-text">Manage patient records and consultations.</p>
+                            <a href="#" class="btn btn-primary btn-sm">Go to EMR</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">💰 Billing</h5>
+                            <p class="card-text">Generate invoices and track payments.</p>
+                            <a href="#" class="btn btn-primary btn-sm">Go to Billing</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">💊 Pharmacy</h5>
+                            <p class="card-text">Manage medicine inventory and prescriptions.</p>
+                            <a href="#" class="btn btn-primary btn-sm">Go to Pharmacy</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Placeholder -->
+            <div class="mt-5">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        System Activity
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">No recent activity. Start by selecting a module on the left.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap Bundle JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
