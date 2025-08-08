@@ -58,7 +58,6 @@
                 <a href="{{ route('billing.index') }}" @class(['nav-link', 'active' => request()->is('billing*')])>Billing</a>
                 <a href="{{ route('pharmacy.index') }}" @class(['nav-link', 'active' => request()->is('pharmacy*')])>Pharmacy</a>
                 <a href="#" class="nav-link">Reports</a>
-                <a href="#" class="nav-link">Settings</a>
             </nav>
         </div>
 

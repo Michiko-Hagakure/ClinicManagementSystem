@@ -73,14 +73,13 @@
                 <a href="{{ route('billing.index') }}" @class(['nav-link', 'active' => request()->is('billing*')])>Billing</a>
                 <a href="{{ route('pharmacy.index') }}" @class(['nav-link', 'active' => request()->is('pharmacy*')])>Pharmacy</a>
                 <a href="#" class="nav-link {{ request()->is('reports*') ? 'active' : '' }}">Reports</a>
-                <a href="#" class="nav-link {{ request()->is('settings*') ? 'active' : '' }}">Settings</a>
             </nav>
         </div>
 
         <!-- Main -->
         <div class="col-md-9 col-lg-10 p-4 main-content">
 
-            @yield('content')>
+            @yield('content')
 
         </div>
     </div>
