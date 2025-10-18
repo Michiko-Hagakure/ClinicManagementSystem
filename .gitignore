@@ -1,0 +1,17 @@
+# Documentation files (kept locally, not in repo)
+*.md
+!README.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
