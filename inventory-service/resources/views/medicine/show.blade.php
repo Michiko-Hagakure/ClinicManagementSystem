@@ -70,10 +70,6 @@
                     <a href="{{ route('medicine.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left me-1"></i>Back to Inventory
                     </a>
-                    <button type="button" class="btn btn-outline-danger ms-auto" 
-                            onclick="confirmDelete('Delete Medicine?', 'This action cannot be undone.', '{{ route('medicine.destroy', $medicine) }}')">
-                        <i class="bi bi-trash me-1"></i>Delete
-                    </button>
                 </div>
             </div>
         </div>
