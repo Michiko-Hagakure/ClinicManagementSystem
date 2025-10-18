@@ -118,28 +118,6 @@
             </ul>
             </div>
             
-            <!-- Service Status Indicator -->
-            <div class="p-2 border-top" style="border-color: rgba(255,255,255,0.2) !important;">
-                @php
-                    $servicesHealth = \App\Helpers\ServiceHealthHelper::getAllServicesHealth();
-                @endphp
-                <div class="small text-white-50 mb-2">
-                    <i class="bi bi-hdd-network me-1"></i>Services Status
-                </div>
-                @foreach($servicesHealth as $service)
-                    <div class="d-flex align-items-center justify-content-between px-2 py-1">
-                        <span class="small text-white" title="{{ $service['description'] }}">
-                            {{ $service['name'] }}
-                        </span>
-                        @if($service['status'])
-                            <span class="badge bg-success"><i class="bi bi-check-circle"></i></span>
-                        @else
-                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i></span>
-                        @endif
-                    </div>
-                @endforeach
-            </div>
-            
             <div class="p-2">
                 <a href="http://127.0.0.1:8000/logout" class="nav-link text-white" onclick="return confirmLogout(event)">
                     <i class="bi bi-box-arrow-right me-2"></i>Sign out
