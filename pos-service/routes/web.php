@@ -8,6 +8,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\ReportsApiController;
 use App\Http\Middleware\CheckAuthService;
 
 // Redirect root to auth service
@@ -39,11 +40,11 @@ Route::get('/pharmacy/history', [PharmacyController::class, 'history'])->name('p
 Route::post('/pharmacy/sell', [PharmacyController::class, 'sell'])->name('pharmacy.sell');
 
 // Report Routes
+Route::get('/reports/financial', [ReportController::class, 'financial'])->name('reports.financial');
 Route::get('/reports/daily', [ReportController::class, 'daily'])->name('reports.daily');
 Route::get('/reports/receipts', [ReportController::class, 'receipts'])->name('reports.receipts');
 
 // Patient Routes
-Route::get('/patients/lookup', [PatientController::class, 'lookup'])->name('patients.lookup');
 Route::get('/patients/search', [PatientController::class, 'search'])->name('patients.search');
 
 // API Routes for Inter-service Communication
@@ -52,5 +53,15 @@ Route::prefix('api/v1')->group(function () {
     Route::post('transactions', [TransactionController::class, 'apiStore']);
     Route::get('patients/search/{query}', [PatientController::class, 'apiSearch']);
     });
+    
+// Additional API Routes (for AJAX calls from views)
+Route::prefix('api')->group(function () {
+    Route::get('/patients/search', [PatientController::class, 'search'])->name('api.patients.search');
+});
 
 }); // End of authenticated routes
+
+// Public API Routes for Owner Dashboard (no auth middleware required)
+Route::prefix('api')->group(function () {
+    Route::get('/reports/financial', [ReportsApiController::class, 'getFinancialReport']);
+});

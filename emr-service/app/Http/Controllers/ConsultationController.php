@@ -18,18 +18,31 @@ class ConsultationController extends Controller
     {
         $query = Consultation::with('patient')->orderBy('consultation_date', 'desc');
 
-        if ($request->has('search')) {
+        // Search filter
+        if ($request->filled('search')) {
             $searchTerm = $request->input('search');
-            $query->whereHas('patient', function($q) use ($searchTerm) {
-                $q->where('first_name', 'like', "%{$searchTerm}%")
-                  ->orWhere('last_name', 'like', "%{$searchTerm}%");
-            })
-            ->orWhere('chief_complaint', 'like', "%{$searchTerm}%")
-            ->orWhere('assessment', 'like', "%{$searchTerm}%")
-            ->orWhere('consultation_notes', 'like', "%{$searchTerm}%");
+            $query->where(function($q) use ($searchTerm) {
+                $q->whereHas('patient', function($subQ) use ($searchTerm) {
+                    $subQ->where('first_name', 'like', "%{$searchTerm}%")
+                         ->orWhere('last_name', 'like', "%{$searchTerm}%");
+                })
+                ->orWhere('chief_complaint', 'like', "%{$searchTerm}%")
+                ->orWhere('assessment', 'like', "%{$searchTerm}%")
+                ->orWhere('consultation_notes', 'like', "%{$searchTerm}%");
+            });
         }
 
-        $consultations = $query->paginate(20);
+        // Status filter
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Date filter
+        if ($request->filled('date')) {
+            $query->whereDate('consultation_date', $request->input('date'));
+        }
+
+        $consultations = $query->paginate(20)->withQueryString();
 
         return view('consultations.index', compact('consultations'));
     }
@@ -39,7 +52,8 @@ class ConsultationController extends Controller
      */
     public function create(Request $request)
     {
-        return view('consultations.create');
+        $patients = Patient::orderBy('last_name')->orderBy('first_name')->get();
+        return view('consultations.create', compact('patients'));
     }
 
     /**
@@ -49,13 +63,14 @@ class ConsultationController extends Controller
     {
         $validated = $request->validate([
             'patient_id' => ['required', Rule::exists('patients', 'id')],
+            'doctor_name' => 'nullable|string|max:255',
             'date' => 'required|date',
             'bp' => 'nullable|string|max:20',
             'temparature' => 'nullable|numeric',
             'weight' => 'nullable|numeric',
             'o2' => 'nullable|numeric',
             'pr' => 'nullable|numeric',
-            'chief_complaint' => 'required|string',
+            'chief_complaint' => 'nullable|string',
             'consultation_notes' => 'nullable|string',
             'follow_up_date' => 'nullable|date',
             'status' => 'nullable|string',
@@ -89,6 +104,104 @@ class ConsultationController extends Controller
         }
 
         return redirect()->route('consultations.index')->with('success', 'Consultation created successfully.');
+    }
+
+    /**
+     * Find consultation for doctor assignment (POS billing workflow)
+     * Looks for consultation created today for patient, regardless of doctor assignment
+     */
+    public function findForAssignment(Request $request)
+    {
+        $validated = $request->validate([
+            'patient_id' => 'required|integer',
+            'date' => 'required|date'
+        ]);
+
+        // Find consultation for this patient on this date (created by medical staff, no doctor yet)
+        $consultation = Consultation::where('patient_id', $validated['patient_id'])
+            ->whereDate('consultation_date', $validated['date'])
+            ->first();
+
+        $found = $consultation !== null;
+
+        return response()->json([
+            'found' => $found,
+            'consultation' => $found ? [
+                'id' => $consultation->id,
+                'patient_id' => $consultation->patient_id,
+                'doctor_name' => $consultation->doctor_name,
+                'consultation_date' => $consultation->consultation_date,
+                'status' => $consultation->status,
+                'chief_complaint' => $consultation->chief_complaint,
+                'created_at' => $consultation->created_at
+            ] : null
+        ]);
+    }
+
+    /**
+     * Assign doctor to an existing consultation (POS billing workflow)
+     */
+    public function assignDoctor(Request $request, Consultation $consultation)
+    {
+        $validated = $request->validate([
+            'doctor_name' => 'required|string|max:255',
+            'transaction_id' => 'nullable|string'
+        ]);
+
+        // Update consultation with doctor assignment
+        $consultation->doctor_name = $validated['doctor_name'];
+        
+        // Append transaction info to notes if provided
+        if (isset($validated['transaction_id'])) {
+            $existingNotes = $consultation->consultation_notes ?? '';
+            $billingNote = "Billed via transaction: {$validated['transaction_id']}. Assigned to: {$validated['doctor_name']}.";
+            $consultation->consultation_notes = trim($existingNotes . "\n" . $billingNote);
+        }
+        
+        $consultation->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Doctor assigned to consultation successfully',
+            'consultation' => [
+                'id' => $consultation->id,
+                'patient_id' => $consultation->patient_id,
+                'doctor_name' => $consultation->doctor_name,
+                'status' => $consultation->status
+            ]
+        ]);
+    }
+
+    /**
+     * Check if a consultation exists for a given patient, doctor, and date
+     * Used by POS service to prevent duplicate consultations (legacy)
+     */
+    public function checkExists(Request $request)
+    {
+        $validated = $request->validate([
+            'patient_id' => 'required|integer',
+            'doctor_name' => 'required|string',
+            'date' => 'required|date'
+        ]);
+
+        $consultation = Consultation::where('patient_id', $validated['patient_id'])
+            ->where('doctor_name', $validated['doctor_name'])
+            ->whereDate('consultation_date', $validated['date'])
+            ->first();
+
+        $exists = $consultation !== null;
+
+        return response()->json([
+            'exists' => $exists,
+            'consultation' => $exists ? [
+                'id' => $consultation->id,
+                'patient_id' => $consultation->patient_id,
+                'doctor_name' => $consultation->doctor_name,
+                'consultation_date' => $consultation->consultation_date,
+                'status' => $consultation->status,
+                'created_at' => $consultation->created_at
+            ] : null
+        ]);
     }
 
     /**
@@ -167,7 +280,7 @@ class ConsultationController extends Controller
                         ->orWhere('last_name', 'like', "%{$query}%");
                   });
             })
-            ->orderBy('date', 'desc')
+            ->orderBy('consultation_date', 'desc')
             ->limit(20)
             ->get();
 

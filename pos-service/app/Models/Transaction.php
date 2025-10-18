@@ -11,6 +11,7 @@ class Transaction extends Model
         'patient_name',
         'patient_id',
         'services',
+        'medicines',
         'service_total',
         'medicine_total',
         'total_amount',
@@ -25,6 +26,7 @@ class Transaction extends Model
 
     protected $casts = [
         'services' => 'array',
+        'medicines' => 'array',
         'service_total' => 'decimal:2',
         'medicine_total' => 'decimal:2',
         'total_amount' => 'decimal:2',

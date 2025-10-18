@@ -135,18 +135,29 @@
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
                     <div class="row align-items-center">
-                        <div class="col">
+                        <div class="col-md-3">
                             <h6 class="m-0 font-weight-bold">
                                 <i class="bi bi-prescription2 me-2"></i>Available Medicines
+                                <small id="medicine-count" class="ms-2 opacity-75">({{ $medicines->count() }})</small>
                             </h6>
                         </div>
-                        <div class="col-auto">
-                            <div class="input-group">
+                        <div class="col-md-9">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <select class="form-select form-select-sm" id="category-filter" style="max-width: 220px;">
+                                    <option value="">All Categories</option>
+                                    <option value="Capsules/Tablets">Capsules/Tablets</option>
+                                    <option value="Antibiotics (TABS/CAPS)">Antibiotics (TABS/CAPS)</option>
+                                    <option value="Suspension">Suspension</option>
+                                    <option value="Drops/Ointment/Cream/Nebule">Drops/Ointment/Cream/Nebule</option>
+                                    <option value="IV Meds (VIAL/AMPULE)">IV Meds (VIAL/AMPULE)</option>
+                                </select>
+                                <div class="input-group" style="max-width: 250px;">
                                 <input type="text" class="form-control form-control-sm" id="medicine-search" 
                                        placeholder="Search medicines...">
                                 <button class="btn btn-outline-light btn-sm" type="button">
                                     <i class="bi bi-search"></i>
                                 </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -284,12 +295,12 @@ document.addEventListener('DOMContentLoaded', function() {
             patientItem.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <strong>${patient.name}</strong>
-                        <br><small class="text-muted">ID: ${patient.patient_id}</small>
+                        <strong>${patient.full_name || patient.name || 'Unknown'}</strong>
+                        <br><small class="text-muted">ID: ${patient.id || patient.patient_id || 'N/A'}</small>
                     </div>
                     <div class="text-end">
-                        <small class="text-muted">${patient.age} yrs, ${patient.sex}</small>
-                        <br><small class="text-muted">${patient.contact}</small>
+                        <small class="text-muted">${patient.age || 'N/A'} yrs, ${patient.gender || patient.sex || 'N/A'}</small>
+                        <br><small class="text-muted">${patient.phone || patient.contact || 'N/A'}</small>
                     </div>
                 </div>
             `;
@@ -306,9 +317,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function selectPatient(patient) {
-        patientSearch.value = patient.name;
-        patientName.value = patient.name;
-        patientId.value = patient.patient_id;
+        const fullName = patient.full_name || patient.name || 'Unknown';
+        const patientID = patient.id || patient.patient_id || '';
+        
+        patientSearch.value = fullName;
+        patientName.value = fullName;
+        patientId.value = patientID;
         hideDropdown();
     }
     
@@ -341,23 +355,40 @@ document.addEventListener('DOMContentLoaded', function() {
         noResults.style.display = 'none';
     }
     
-    // Medicine search functionality
+    // Medicine search and category filter functionality
     const medicineSearch = document.getElementById('medicine-search');
-    medicineSearch.addEventListener('input', function() {
-        const query = this.value.toLowerCase();
+    const categoryFilter = document.getElementById('category-filter');
+    
+    function filterMedicines() {
+        const searchQuery = medicineSearch.value.toLowerCase();
+        const categoryQuery = categoryFilter.value.toLowerCase();
         const medicineItems = document.querySelectorAll('.medicine-item');
+        let visibleCount = 0;
         
         medicineItems.forEach(item => {
             const name = item.dataset.name;
             const category = item.dataset.category;
             
-            if (name.includes(query) || category.includes(query)) {
+            const matchesSearch = !searchQuery || name.includes(searchQuery) || category.includes(searchQuery);
+            const matchesCategory = !categoryQuery || category === categoryQuery;
+            
+            if (matchesSearch && matchesCategory) {
                 item.style.display = 'block';
+                visibleCount++;
             } else {
                 item.style.display = 'none';
             }
         });
-    });
+        
+        // Update the count display
+        const countElement = document.getElementById('medicine-count');
+        if (countElement) {
+            countElement.textContent = `(${visibleCount})`;
+        }
+    }
+    
+    medicineSearch.addEventListener('input', filterMedicines);
+    categoryFilter.addEventListener('change', filterMedicines);
     
     // Quantity controls
     document.querySelectorAll('.qty-minus').forEach(btn => {

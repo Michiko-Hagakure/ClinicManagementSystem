@@ -121,14 +121,6 @@
                             </button>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="d-grid">
-                            <button class="btn btn-outline-info btn-lg" onclick="location.href='{{ route('patients.lookup') }}'">
-                                <i class="bi bi-person-search d-block mb-2" style="font-size: 2rem;"></i>
-                                Find Patient
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -144,7 +136,7 @@
             <div class="card-body">
                 <div class="text-center">
                     <div class="mb-3">
-                        <h4 class="text-primary">{{ now()->format('g:i A') }}</h4>
+                        <h4 class="text-primary" id="currentTime">{{ now()->format('g:i A') }}</h4>
                         <small class="text-muted">Current Time</small>
                     </div>
                     <hr>
@@ -154,11 +146,13 @@
                     </div>
                     <div class="mb-2">
                         <strong>Status:</strong><br>
+                        <span id="clinicStatus" class="badge">
                         @if(now()->hour >= 7 && now()->hour < 17)
                             <span class="badge bg-success">Open</span>
                         @else
                             <span class="badge bg-danger">Closed</span>
                         @endif
+                        </span>
                     </div>
                 </div>
             </div>
@@ -178,25 +172,61 @@
             <div class="card-body">
                 @if(isset($recentTransactions) && $recentTransactions->count() > 0)
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Time</th>
-                                    <th>Patient</th>
-                                    <th>Services</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
+                                    <th style="width: 12%;">Time</th>
+                                    <th style="width: 25%;">Patient</th>
+                                    <th style="width: 30%;">Services</th>
+                                    <th style="width: 15%;">Amount</th>
+                                    <th style="width: 18%;">Payment</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($recentTransactions as $transaction)
-                                <tr>
-                                    <td>{{ $transaction->created_at->format('g:i A') }}</td>
-                                    <td>{{ $transaction->patient_name }}</td>
-                                    <td>{{ $transaction->services }}</td>
-                                    <td>₱{{ number_format($transaction->total_amount, 2) }}</td>
+                                <tr class="align-middle">
                                     <td>
-                                        <span class="badge bg-success">Paid</span>
+                                        <div class="text-primary fw-bold">{{ $transaction->created_at->format('g:i A') }}</div>
+                                        <small class="text-muted">{{ $transaction->created_at->format('M d') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                <i class="bi bi-person text-white small"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ $transaction->patient_name }}</div>
+                                                <small class="text-muted">{{ $transaction->patient_code }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate" title="{{ $transaction->services }}">
+                                            {{ $transaction->services }}
+                                        </div>
+                                        @if($transaction->service_count > 1)
+                                            <small class="text-muted">{{ $transaction->service_count }} services</small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-success">₱{{ number_format($transaction->total_amount, 2) }}</div>
+                                        @if($transaction->change_amount > 0)
+                                            <small class="text-muted">Change: ₱{{ number_format($transaction->change_amount, 2) }}</small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column align-items-start">
+                                            @if($transaction->payment_method == 'cash')
+                                                <span class="badge bg-success mb-1"><i class="bi bi-cash me-1"></i>Cash</span>
+                                            @elseif($transaction->payment_method == 'gcash')
+                                                <span class="badge bg-primary mb-1"><i class="bi bi-phone me-1"></i>GCash</span>
+                                            @elseif($transaction->payment_method == 'credit_card')
+                                                <span class="badge bg-info mb-1"><i class="bi bi-credit-card me-1"></i>Card</span>
+                                            @else
+                                                <span class="badge bg-secondary mb-1">{{ ucfirst($transaction->payment_method) }}</span>
+                                            @endif
+                                            <small class="text-muted">{{ $transaction->cashier_name }}</small>
+                                        </div>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -223,27 +253,69 @@
                     <i class="bi bi-exclamation-triangle me-2"></i>Pending Actions
                 </h6>
             </div>
-            <div class="card-body">
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                 @if(isset($pendingActions) && $pendingActions->count() > 0)
                     @foreach($pendingActions as $action)
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-clock text-warning"></i>
+                    <div class="d-flex align-items-start mb-3 p-2 rounded {{ $action->urgency == 'high' ? 'bg-danger-subtle border border-danger' : ($action->urgency == 'medium' ? 'bg-warning-subtle border border-warning' : 'bg-light border') }}">
+                        <div class="flex-shrink-0 me-3">
+                            @if($action->urgency == 'high')
+                                <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+                            @elseif($action->urgency == 'medium')
+                                <i class="bi bi-clock-fill text-warning fs-5"></i>
+                            @else
+                                <i class="bi bi-clock text-muted fs-5"></i>
+                            @endif
                         </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-0">{{ $action->patient_name }}</h6>
-                            <small class="text-muted">{{ $action->service_type }}</small>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <h6 class="mb-0 fw-bold">{{ $action->patient_name }}</h6>
+                                <span class="badge bg-primary">{{ $action->patient_code }}</span>
+                            </div>
+                            <div class="text-muted small mb-1">
+                                <strong>Bill #{{ $action->bill_number }}</strong> • {{ $action->first_service }}
+                                @if($action->service_count > 1)
+                                    <span class="text-primary">+{{ $action->service_count - 1 }} more</span>
+                                @endif
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-bold text-success">₱{{ number_format($action->total_amount, 2) }}</span>
+                                    <small class="text-muted ms-2">
+                                        @if($action->days_old == 0)
+                                            Today
+                                        @elseif($action->days_old == 1)
+                                            1 day ago
+                                        @else
+                                            {{ $action->days_old }} days ago
+                                        @endif
+                                    </small>
+                                </div>
+                                <button class="btn btn-sm {{ $action->urgency == 'high' ? 'btn-danger' : 'btn-outline-primary' }}" 
+                                        onclick="processBill({{ $action->id }}, '{{ $action->bill_number }}', {{ $action->total_amount }})">
+                                    @if($action->urgency == 'high')
+                                        <i class="bi bi-lightning-fill me-1"></i>Urgent
+                                    @else
+                                        <i class="bi bi-credit-card me-1"></i>Process
+                                    @endif
+                                </button>
                         </div>
-                        <div class="flex-shrink-0">
-                            <button class="btn btn-sm btn-outline-primary">Process</button>
+                            @if($action->due_date)
+                                <div class="mt-1">
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar-event me-1"></i>
+                                        Due: {{ $action->due_date->format('M d, Y') }}
+                                    </small>
+                        </div>
+                            @endif
                         </div>
                     </div>
                     @endforeach
                 @else
-                    <div class="text-center py-3">
-                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
-                        <p class="text-muted mt-2 mb-0">All caught up!</p>
-                        <small class="text-muted">No pending actions</small>
+                    <div class="text-center py-4">
+                        <i class="bi bi-check-circle text-success" style="font-size: 2.5rem;"></i>
+                        <h6 class="mt-2 mb-1">All caught up!</h6>
+                        <p class="text-muted mb-0">No pending payments at the moment.</p>
+                        <small class="text-muted">Great work keeping everything up to date!</small>
                     </div>
                 @endif
             </div>
@@ -254,10 +326,42 @@
 
 @section('scripts')
 <script>
-    // Auto-refresh dashboard every 30 seconds
-    setTimeout(function() {
+    // Real-time clock and status updates
+    function updateTimeAndStatus() {
+        const now = new Date();
+        
+        // Update current time
+        const timeString = now.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        document.getElementById('currentTime').textContent = timeString;
+        
+        // Update clinic status based on current hour
+        const currentHour = now.getHours();
+        const statusElement = document.getElementById('clinicStatus');
+        
+        if (currentHour >= 7 && currentHour < 17) {
+            statusElement.innerHTML = '<span class="badge bg-success">Open</span>';
+        } else {
+            statusElement.innerHTML = '<span class="badge bg-danger">Closed</span>';
+        }
+    }
+    
+    // Update time immediately when page loads
+    updateTimeAndStatus();
+    
+    // Update time every second
+    setInterval(updateTimeAndStatus, 1000);
+    
+    // Auto-refresh dashboard data every 5 minutes (but not the whole page to preserve real-time clock)
+    setInterval(function() {
+        // Only refresh if user is active (to avoid unnecessary requests)
+        if (document.hasFocus()) {
         location.reload();
-    }, 30000);
+        }
+    }, 300000); // 5 minutes
     
     // Quick keyboard shortcuts
     document.addEventListener('keydown', function(e) {
@@ -271,12 +375,66 @@
                     e.preventDefault();
                     location.href = '{{ route('pharmacy.sales') }}';
                     break;
-                case 'f':
-                    e.preventDefault();
-                    location.href = '{{ route('patients.lookup') }}';
-                    break;
             }
         }
+    });
+    
+    // Show notification when clinic status changes
+    let lastStatus = null;
+    function checkStatusChange() {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentStatus = (currentHour >= 7 && currentHour < 17) ? 'open' : 'closed';
+        
+        if (lastStatus !== null && lastStatus !== currentStatus) {
+            // Status changed, show notification
+            const message = currentStatus === 'open' ? 
+                'Clinic is now OPEN for business!' : 
+                'Clinic is now CLOSED. Have a great day!';
+                
+            // You can add a toast notification here if needed
+            console.log(message);
+        }
+        
+        lastStatus = currentStatus;
+    }
+    
+    // Check for status changes every minute
+    setInterval(checkStatusChange, 60000);
+    checkStatusChange(); // Initial check
+    
+    // Function to handle processing pending bills
+    function processBill(billId, billNumber, amount) {
+        // Show confirmation dialog
+        if (confirm(`Process payment for Bill #${billNumber}?\nAmount: ₱${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}`)) {
+            // In a real implementation, you would redirect to the payment processing page
+            // For now, we'll just show an alert and potentially redirect
+            alert(`Redirecting to process Bill #${billNumber}...`);
+            
+            // Redirect to transaction creation with pre-filled data
+            // You can modify this URL based on your actual transaction processing route
+            window.location.href = `/transactions/create?bill_id=${billId}`;
+        }
+    }
+    
+    // Auto-refresh recent transactions every 30 seconds (only the data, not the whole page)
+    function refreshTransactionData() {
+        // This could be implemented with AJAX to update just the transaction table
+        // For now, we'll do a full page refresh every 5 minutes as implemented above
+        console.log('Transaction data refresh - implement AJAX here if needed');
+    }
+    
+    // Optional: Add hover effects for transaction rows
+    document.addEventListener('DOMContentLoaded', function() {
+        const transactionRows = document.querySelectorAll('table tbody tr');
+        transactionRows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f8f9fa';
+            });
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+            });
+        });
     });
 </script>
 @endsection

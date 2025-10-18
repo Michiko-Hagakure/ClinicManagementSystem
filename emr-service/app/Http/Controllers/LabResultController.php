@@ -110,13 +110,16 @@ class LabResultController extends Controller
             'test_category' => 'nullable|string|max:255',
             'test_name' => 'required|string|max:255',
             'notes' => 'nullable|string',
-            'test_date' => 'required|date',
+            'test_date' => 'nullable|date',
             'technician_name' => 'nullable|string|max:255',
             'result_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,dcm|max:10240' // 10MB max
         ]);
         
         // Set initial status
         $validatedData['status'] = 'pending';
+        
+        // Use current timestamp for test_date if not provided
+        $validatedData['test_date'] = $validatedData['test_date'] ?? now();
         
         // Handle file upload
         if ($request->hasFile('result_file')) {
@@ -138,28 +141,36 @@ class LabResultController extends Controller
     /**
      * Display the specified lab result.
      */
-    public function show(LabResult $labResult): View
+    public function show(LabResult $lab_record): View
     {
-        $labResult->load(['patient', 'consultation']);
+        $lab_record->load(['patient', 'consultation']);
+
+        // Fallback: if patient is missing but consultation has a patient, use it for display
+        if (!$lab_record->patient && $lab_record->consultation && method_exists($lab_record->consultation, 'patient')) {
+            $fallbackPatient = $lab_record->consultation->patient;
+            if ($fallbackPatient) {
+                $lab_record->setRelation('patient', $fallbackPatient);
+            }
+        }
         
-        return view('lab-records.show', compact('labResult'));
+        return view('lab-records.show', ['labResult' => $lab_record]);
     }
 
     /**
      * Show the form for editing the lab result.
      */
-    public function edit(LabResult $labResult): View
+    public function edit(LabResult $lab_record): View
     {
-        $labResult->load(['patient', 'consultation']);
+        $lab_record->load(['patient', 'consultation']);
         $patients = Patient::orderBy('last_name')->orderBy('first_name')->get();
         
-        return view('lab-records.edit', compact('labResult', 'patients'));
+        return view('lab-records.edit', ['labResult' => $lab_record, 'patients' => $patients]);
     }
 
     /**
      * Update the lab result.
      */
-    public function update(Request $request, LabResult $labResult): RedirectResponse
+    public function update(Request $request, LabResult $lab_record): RedirectResponse
     {
         $validatedData = $request->validate([
             'patient_id' => ['required', Rule::exists('patients', 'id')],
@@ -180,23 +191,23 @@ class LabResultController extends Controller
             // Logic for file handling would go here, but columns are missing
         }
         
-        $labResult->update($validatedData);
+        $lab_record->update($validatedData);
         
-        return redirect()->route('lab-records.show', $labResult)
+        return redirect()->route('lab-records.show', $lab_record)
             ->with('success', 'Lab result updated successfully.');
     }
 
     /**
      * Remove the lab result.
      */
-    public function destroy(LabResult $labResult): RedirectResponse
+    public function destroy(LabResult $lab_record): RedirectResponse
     {
         // Delete associated file if exists
-        if ($labResult->file_path && Storage::disk('public')->exists($labResult->file_path)) {
-            Storage::disk('public')->delete($labResult->file_path);
+        if ($lab_record->file_path && Storage::disk('public')->exists($lab_record->file_path)) {
+            Storage::disk('public')->delete($lab_record->file_path);
         }
         
-        $labResult->delete();
+        $lab_record->delete();
         
         return redirect()->route('lab-records.index')
             ->with('success', 'Lab result deleted successfully.');
@@ -205,27 +216,27 @@ class LabResultController extends Controller
     /**
      * Upload file for existing lab result.
      */
-    public function uploadFile(Request $request, LabResult $labResult): RedirectResponse
+    public function uploadFile(Request $request, LabResult $lab_record): RedirectResponse
     {
         $request->validate([
             'result_file' => 'required|file|mimes:pdf,jpg,jpeg,png,dcm|max:10240'
         ]);
         
         // Delete old file if exists
-        if ($labResult->file_path && Storage::disk('public')->exists($labResult->file_path)) {
-            Storage::disk('public')->delete($labResult->file_path);
+        if ($lab_record->file_path && Storage::disk('public')->exists($lab_record->file_path)) {
+            Storage::disk('public')->delete($lab_record->file_path);
         }
         
         $file = $request->file('result_file');
         $filename = time() . '_' . $file->getClientOriginalName();
         $path = $file->storeAs('lab-results', $filename, 'public');
         
-        $labResult->update([
+        $lab_record->update([
             'file_path' => $path,
             'original_filename' => $file->getClientOriginalName()
         ]);
         
-        return redirect()->route('lab-records.show', $labResult)
+        return redirect()->route('lab-records.show', $lab_record)
             ->with('success', 'File uploaded successfully.');
     }
 
@@ -255,38 +266,38 @@ class LabResultController extends Controller
     /**
      * Mark lab result as reviewed by doctor
      */
-    public function markAsReviewed(Request $request, LabResult $labResult): RedirectResponse
+    public function markAsReviewed(Request $request, LabResult $lab_record): RedirectResponse
     {
         $request->validate([
             'notes' => 'required|string|min:10',
             'reviewed_by' => 'required|string|max:255'
         ]);
 
-        $labResult->update([
+        $lab_record->update([
             'status' => 'reviewed',
             // 'reviewed_by' column does not exist
             'notes' => $request->notes,
         ]);
 
-        return redirect()->route('lab-records.show', $labResult)
+        return redirect()->route('lab-records.show', $lab_record)
             ->with('success', 'Lab result reviewed and marked complete.');
     }
 
     /**
      * Add doctor notes to lab result
      */
-    public function addDoctorNotes(Request $request, LabResult $labResult): RedirectResponse
+    public function addDoctorNotes(Request $request, LabResult $lab_record): RedirectResponse
     {
         $request->validate([
             'notes' => 'required|string|min:5',
         ]);
 
-        $labResult->update([
+        $lab_record->update([
             'notes' => $request->notes,
             // 'reviewed_by' and 'reviewed_at' columns do not exist
         ]);
 
-        return redirect()->route('lab-records.show', $labResult)
+        return redirect()->route('lab-records.show', $lab_record)
             ->with('success', 'Doctor notes added successfully.');
     }
 

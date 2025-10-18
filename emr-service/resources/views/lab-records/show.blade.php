@@ -8,7 +8,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h1 class="h4 mb-0 text-gray-800">Lab Result Details</h1>
-            <small class="text-muted">{{ $labResult->patient->full_name }} - {{ $labResult->test_name }} on 
+            <small class="text-muted">{{ $labResult->patient?->full_name ?? 'Unknown Patient' }} - {{ $labResult->test_name }} on 
                 @if($labResult->test_date)
                     {{ $labResult->test_date->format('F d, Y') }}
                 @else
@@ -17,9 +17,6 @@
             </small>
         </div>
         <div>
-            <a href="{{ route('lab-records.edit', $labResult) }}" class="btn btn-warning me-2">
-                <i class="bi bi-pencil me-1"></i>Edit
-            </a>
             <a href="{{ route('lab-records.index') }}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left me-1"></i>Back to List
             </a>
@@ -43,34 +40,41 @@
                     </div>
                     
                     <div class="patient-details">
-                        <h5 class="text-center mb-3">{{ $labResult->patient->full_name }}</h5>
+                        <h5 class="text-center mb-3">{{ $labResult->patient?->full_name ?? 'Unknown Patient' }}</h5>
                         
                         <div class="info-item mb-2">
                             <strong>Patient ID:</strong>
-                            <span class="text-muted">{{ $labResult->patient->patient_id }}</span>
+                            <span class="text-muted">{{ $labResult->patient?->patient_code ?? 'N/A' }}</span>
                         </div>
                         
                         <div class="info-item mb-2">
                             <strong>Age & Gender:</strong>
-                            <span class="text-muted">{{ $labResult->patient->age }} years, {{ $labResult->patient->sex }}</span>
+                            <span class="text-muted">{{ $labResult->patient?->age ?? 'N/A' }} years, {{ $labResult->patient?->gender ?? 'N/A' }}</span>
                         </div>
                         
                         <div class="info-item mb-2">
                             <strong>Birth Date:</strong>
-                            <span class="text-muted">{{ $labResult->patient->birth_date->format('M d, Y') }}</span>
+                            <span class="text-muted">
+                                @if($labResult->patient && $labResult->patient->date_of_birth)
+                                    {{ $labResult->patient->date_of_birth->format('M d, Y') }}
+                                @else
+                                    N/A
+                                @endif
+                            </span>
                         </div>
                         
                         <div class="info-item mb-2">
                             <strong>Contact:</strong>
-                            <span class="text-muted">{{ $labResult->patient->contact_number }}</span>
+                            <span class="text-muted">{{ $labResult->patient?->phone_number ?? 'N/A' }}</span>
                         </div>
                         
                         <div class="info-item">
                             <strong>Address:</strong>
-                            <span class="text-muted">{{ $labResult->patient->address }}</span>
+                            <span class="text-muted">{{ $labResult->patient?->address ?? 'N/A' }}</span>
                         </div>
                     </div>
                     
+                    @if($labResult->patient)
                     <div class="mt-3 pt-3 border-top">
                         <div class="row text-center">
                             <div class="col">
@@ -80,6 +84,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -225,191 +230,171 @@
             </div>
 
             <!-- Results Information Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-info text-white">
-                    <h6 class="mb-0">
-                        <i class="bi bi-clipboard-check me-2"></i>Test Results
-                    </h6>
-                </div>
-                <div class="card-body">
-                    @if($labResult->result_notes || $labResult->result_value || $labResult->reference_range)
-                        <div class="row">
-                            @if($labResult->result_value || $labResult->reference_range)
-                                <div class="col-md-6">
-                                    @if($labResult->result_value)
-                                        <div class="info-item mb-3">
-                                            <strong>Result Value:</strong>
-                                            <div class="h5 text-primary">{{ $labResult->result_value }}</div>
-                                        </div>
-                                    @endif
-                                    
-                                    @if($labResult->reference_range)
-                                        <div class="info-item mb-3">
-                                            <strong>Reference Range:</strong>
-                                            <div class="text-muted">{{ $labResult->reference_range }}</div>
-                                        </div>
-                                    @endif
-                                </div>
-                            @endif
-                            
-                            @if($labResult->result_notes)
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <strong>Result Notes:</strong>
-                                        <div class="mt-2 p-3 bg-light rounded">
-                                            {{ $labResult->result_notes }}
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
-                        
-                        @if($labResult->completed_at)
-                            <div class="mt-3 pt-3 border-top">
-                                <small class="text-muted">
-                                    <i class="bi bi-clock-history me-1"></i>
-                                    Results completed on {{ $labResult->completed_at->format('F d, Y - g:i A') }}
-                                </small>
-                            </div>
-                        @endif
-                    @else
-                        <div class="text-center py-3 text-muted">
-                            <i class="bi bi-hourglass-split display-4"></i>
-                            <h6 class="mt-2">Results Pending</h6>
-                            <p>Test results are not yet available.</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- File Attachment Card -->
-            @if($labResult->file_path)
+            @php
+                // Only show Test Results section if there's text-based results OR no files are attached yet
+                $hasTextResults = $labResult->result_notes || $labResult->result_value || $labResult->reference_range;
+                $hasFileAttachments = ($labResult->file_attachments && is_array($labResult->file_attachments) && count($labResult->file_attachments) > 0) || $labResult->file_path;
+                $showTestResultsSection = $hasTextResults || !$hasFileAttachments;
+            @endphp
+            
+            @if($showTestResultsSection)
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-warning text-dark">
+                    <div class="card-header bg-info text-white">
                         <h6 class="mb-0">
-                            <i class="bi bi-file-earmark-arrow-up me-2"></i>Attached File
+                            <i class="bi bi-clipboard-check me-2"></i>Test Results
                         </h6>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="file-icon me-3">
-                                @php
-                                    $extension = pathinfo($labResult->original_filename, PATHINFO_EXTENSION);
-                                @endphp
-                                @if(in_array(strtolower($extension), ['jpg', 'jpeg', 'png']))
-                                    <i class="bi bi-file-earmark-image display-4 text-success"></i>
-                                @elseif(strtolower($extension) === 'pdf')
-                                    <i class="bi bi-file-earmark-pdf display-4 text-danger"></i>
-                                @else
-                                    <i class="bi bi-file-earmark display-4 text-secondary"></i>
+                        @if($hasTextResults)
+                            <div class="row">
+                                @if($labResult->result_value || $labResult->reference_range)
+                                    <div class="col-md-6">
+                                        @if($labResult->result_value)
+                                            <div class="info-item mb-3">
+                                                <strong>Result Value:</strong>
+                                                <div class="h5 text-primary">{{ $labResult->result_value }}</div>
+                                            </div>
+                                        @endif
+                                        
+                                        @if($labResult->reference_range)
+                                            <div class="info-item mb-3">
+                                                <strong>Reference Range:</strong>
+                                                <div class="text-muted">{{ $labResult->reference_range }}</div>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endif
+                                
+                                @if($labResult->result_notes)
+                                    <div class="col-md-6">
+                                        <div class="info-item">
+                                            <strong>Result Notes:</strong>
+                                            <div class="mt-2 p-3 bg-light rounded">
+                                                {{ $labResult->result_notes }}
+                                            </div>
+                                        </div>
+                                    </div>
                                 @endif
                             </div>
-                            <div class="file-info flex-grow-1">
-                                <h6 class="mb-0">{{ $labResult->original_filename }}</h6>
-                                <small class="text-muted">
-                                    Uploaded result file
-                                </small>
+                            
+                            @if($labResult->completed_at)
+                                <div class="mt-3 pt-3 border-top">
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock-history me-1"></i>
+                                        Results completed on {{ $labResult->completed_at->format('F d, Y - g:i A') }}
+                                    </small>
+                                </div>
+                            @endif
+                        @else
+                            <div class="text-center py-3 text-muted">
+                                <i class="bi bi-hourglass-split display-4"></i>
+                                <h6 class="mt-2">Results Pending</h6>
+                                <p>Test results are not yet available.</p>
                             </div>
-                            <div class="file-actions">
-                                <a href="{{ Storage::url($labResult->file_path) }}" 
-                                   target="_blank" 
-                                   class="btn btn-outline-primary">
-                                    <i class="bi bi-eye me-1"></i>View File
-                                </a>
-                                <a href="{{ Storage::url($labResult->file_path) }}" 
-                                   download="{{ $labResult->original_filename }}"
-                                   class="btn btn-outline-success ms-2">
-                                    <i class="bi bi-download me-1"></i>Download
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @else
-                <!-- File Upload Card -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0">
-                            <i class="bi bi-file-earmark-arrow-up me-2"></i>Result File
-                        </h6>
-                    </div>
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-cloud-arrow-up display-4 text-muted"></i>
-                        <h6 class="mt-2 text-muted">No file attached</h6>
-                        <p class="text-muted">Upload the test result file when available.</p>
-                        
-                        <form action="{{ route('lab-records.upload', $labResult) }}" method="POST" enctype="multipart/form-data" class="d-inline-block">
-                            @csrf
-                            <div class="input-group">
-                                <input type="file" name="result_file" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.dcm" required>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-upload me-1"></i>Upload
-                                </button>
-                            </div>
-                        </form>
+                        @endif
                     </div>
                 </div>
             @endif
 
-            <!-- Staff Information Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-secondary text-white">
-                    <h6 class="mb-0">
-                        <i class="bi bi-people me-2"></i>Staff Information
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            @if($labResult->requested_by)
-                                <div class="info-item mb-3">
-                                    <strong>Requested By:</strong>
-                                    <div class="text-muted">{{ $labResult->requested_by }}</div>
-                                </div>
-                            @endif
+            <!-- File Attachment Card -->
+            @php
+                $hasFiles = false;
+                $attachments = [];
+                
+                // Check for file_attachments array (doctor uploads)
+                if ($labResult->file_attachments && is_array($labResult->file_attachments) && count($labResult->file_attachments) > 0) {
+                    $hasFiles = true;
+                    $attachments = $labResult->file_attachments;
+                }
+                // Check for single file_path (staff uploads)
+                elseif ($labResult->file_path) {
+                    $hasFiles = true;
+                    $attachments = [$labResult->file_path];
+                }
+            @endphp
+            
+            @if($hasFiles)
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0">
+                            <i class="bi bi-file-earmark-arrow-up me-2"></i>Attached Files
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        @foreach($attachments as $index => $file)
+                            @php
+                                $extension = pathinfo($file, PATHINFO_EXTENSION);
+                                $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+                                $isImage = in_array(strtolower($extension), $imageExtensions);
+                            @endphp
                             
-                            @if($labResult->performed_by)
-                                <div class="info-item mb-3">
-                                    <strong>Performed By:</strong>
-                                    <div class="text-muted">{{ $labResult->performed_by }}</div>
+                            @if($isImage)
+                                <!-- Display Image -->
+                                <div class="mb-3 text-center">
+                                    <img src="{{ asset('storage/lab-results/' . $file) }}" 
+                                         alt="Lab Result Image {{ $index + 1 }}" 
+                                         class="img-fluid rounded"
+                                         style="max-height: 600px; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                    <div class="mt-2">
+                                        <a href="{{ asset('storage/lab-results/' . $file) }}" 
+                                           target="_blank" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-eye me-1"></i>View Full Size
+                                        </a>
+                                        <a href="{{ asset('storage/lab-results/' . $file) }}" 
+                                           download="{{ basename($file) }}"
+                                           class="btn btn-outline-success btn-sm ms-2">
+                                            <i class="bi bi-download me-1"></i>Download
+                                        </a>
+                                    </div>
                                 </div>
-                            @endif
-                            
-                            @if($labResult->reviewed_by)
-                                <div class="info-item">
-                                    <strong>Reviewed By:</strong>
-                                    <div class="text-muted">{{ $labResult->reviewed_by }}</div>
-                                    @if($labResult->reviewed_at)
-                                        <small class="text-muted d-block">
-                                            {{ $labResult->reviewed_at->format('M d, Y - g:i A') }}
-                                        </small>
-                                    @endif
-                                </div>
-                            @endif
-                        </div>
-                        
-                        <div class="col-md-8">
-                            @if($labResult->technician_notes)
-                                <div class="info-item mb-3">
-                                    <strong>Technician Notes:</strong>
-                                    <div class="mt-2 p-3 bg-light rounded">
-                                        {{ $labResult->technician_notes }}
+                            @else
+                                <!-- Display File Link -->
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="file-icon me-3">
+                                        @if(strtolower($extension) === 'pdf')
+                                            <i class="bi bi-file-earmark-pdf display-4 text-danger"></i>
+                                        @else
+                                            <i class="bi bi-file-earmark display-4 text-secondary"></i>
+                                        @endif
+                                    </div>
+                                    <div class="file-info flex-grow-1">
+                                        <h6 class="mb-0">{{ basename($file) }}</h6>
+                                        <small class="text-muted">Uploaded result file</small>
+                                    </div>
+                                    <div class="file-actions">
+                                        <a href="{{ asset('storage/lab-results/' . $file) }}" 
+                                           target="_blank" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-eye me-1"></i>View File
+                                        </a>
+                                        <a href="{{ asset('storage/lab-results/' . $file) }}" 
+                                           download="{{ basename($file) }}"
+                                           class="btn btn-outline-success btn-sm ms-2">
+                                            <i class="bi bi-download me-1"></i>Download
+                                        </a>
                                     </div>
                                 </div>
                             @endif
-                            
-                            @if($labResult->doctor_notes)
-                                <div class="info-item">
-                                    <strong>Doctor Notes:</strong>
-                                    <div class="mt-2 p-3 bg-light rounded">
-                                        {{ $labResult->doctor_notes }}
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
+                        @endforeach
                     </div>
                 </div>
-            </div>
+            @else
+                <!-- No File Attached -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="bi bi-file-earmark me-2"></i>Result File
+                        </h6>
+                    </div>
+                    <div class="card-body text-center py-4">
+                        <i class="bi bi-file-earmark-x display-4 text-muted"></i>
+                        <h6 class="mt-2 text-muted">No file attached</h6>
+                        <p class="text-muted">File will be uploaded by doctor when available.</p>
+                    </div>
+                </div>
+            @endif
+                            
         </div>
     </div>
 </div>

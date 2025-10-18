@@ -270,6 +270,93 @@ class EmrApiService
     }
 
     /**
+     * Find consultation for patient on specific date (for doctor assignment)
+     * Returns consultation data if found, null otherwise
+     */
+    public function findConsultationForDoctorAssignment(int $patientId, string $date): ?array
+    {
+        try {
+            Log::info('EmrApiService: Finding consultation for doctor assignment', [
+                'patient_id' => $patientId,
+                'date' => $date
+            ]);
+
+            $response = Http::timeout($this->timeout)
+                ->get("{$this->emrBaseUrl}/api/v1/consultations/find-for-assignment", [
+                    'patient_id' => $patientId,
+                    'date' => $date
+                ]);
+
+            if ($response->successful()) {
+                $result = $response->json();
+                
+                Log::info('EmrApiService: Find consultation result', [
+                    'found' => $result['found'] ?? false,
+                    'consultation_id' => $result['consultation']['id'] ?? null
+                ]);
+                
+                return $result['found'] ? $result['consultation'] : null;
+            }
+
+            Log::warning('EMR API find consultation failed', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+
+            return null;
+        } catch (Exception $e) {
+            Log::error('EMR API find consultation error', [
+                'patient_id' => $patientId,
+                'error' => $e->getMessage()
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Assign doctor to existing consultation
+     */
+    public function assignDoctorToConsultation(int $consultationId, string $doctorName, string $transactionId): bool
+    {
+        try {
+            Log::info('EmrApiService: Assigning doctor to consultation', [
+                'consultation_id' => $consultationId,
+                'doctor_name' => $doctorName,
+                'transaction_id' => $transactionId
+            ]);
+
+            $response = Http::timeout($this->timeout)
+                ->patch("{$this->emrBaseUrl}/api/v1/consultations/{$consultationId}/assign-doctor", [
+                    'doctor_name' => $doctorName,
+                    'transaction_id' => $transactionId
+                ]);
+
+            if ($response->successful()) {
+                Log::info('EmrApiService: Doctor assigned successfully', [
+                    'consultation_id' => $consultationId
+                ]);
+                return true;
+            }
+
+            Log::warning('EMR API assign doctor failed', [
+                'consultation_id' => $consultationId,
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+
+            return false;
+        } catch (Exception $e) {
+            Log::error('EMR API assign doctor error', [
+                'consultation_id' => $consultationId,
+                'error' => $e->getMessage()
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
      * Create consultation in EMR system
      */
     public function createConsultation(array $consultationData): ?array

@@ -192,10 +192,13 @@
                             <label class="form-label fw-bold">Zip Code</label>
                             <input type="text" 
                                    name="zip_code" 
+                                   id="zip_code_input"
                                    class="form-control form-control-lg @error('zip_code') is-invalid @enderror" 
                                    value="{{ old('zip_code') }}" 
-                                   placeholder="e.g., 1100"
-                                   style="font-size: 1.1em; text-align: center;">
+                                   placeholder="Auto-filled"
+                                   readonly
+                                   style="font-size: 1.1em; text-align: center; background-color: #e9ecef; font-weight: 600; color: #198754;">
+                            <small class="text-muted">Automatically calculated</small>
                             @error('zip_code')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -245,7 +248,7 @@
                                 <a href="{{ route('patients.index') }}" class="btn btn-outline-secondary">
                                     <i class="bi bi-x-circle me-2"></i>Cancel
                                 </a>
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
                                     <i class="bi bi-person-plus me-2"></i>Register Patient
                                 </button>
                             </div>
@@ -473,10 +476,156 @@ document.addEventListener('DOMContentLoaded', function() {
         ]
     };
     
+    // Quezon City Zip Code Mapping (Detailed Barangay Level)
+    const barangayZipCodes = {
+        // District 6 (Novaliches Area)
+        'Apolonio Samson': '1117',
+        'Baesa': '1128',
+        'Balong Bato': '1116',
+        'Culiat': '1128',
+        'New Era': '1107',
+        'Pasong Tamo': '1107',
+        'Sangandaan': '1116',
+        'Sauyo': '1116',
+        'Talipapa': '1116',
+        'Tandang Sora': '1116',
+        
+        // District 5 (Fairview/Greater Lagro Area)
+        'Bagbag': '1116',
+        'Capri': '1118',
+        'Fairview': '1118',
+        'Greater Lagro': '1118',
+        'Gulod': '1117',
+        'Kaligayahan': '1117',
+        'Nagkaisang Nayon': '1118',
+        'North Fairview': '1121',
+        'Novaliches Proper': '1116',
+        'Pasong Putik Proper': '1118',
+        'San Agustin': '1117',
+        'San Bartolome': '1116',
+        'Santa Lucia': '1117',
+        'Santa Monica': '1117',
+        
+        // District 1
+        'Alicia': '1114',
+        'Bagong Pag-asa': '1105',
+        'Bahay Toro': '1106',
+        'Balingasa': '1115',
+        'Bungad': '1112',
+        'Damar': '1115',
+        'Damayan': '1104',
+        'Del Monte': '1105',
+        'Katipunan': '1105',
+        'Manresa': '1117',
+        'Mariblo': '1114',
+        'Masambong': '1105',
+        'N.S. Amoranto': '1113',
+        'Nayong Kanluran': '1114',
+        'Paang Bundok': '1114',
+        'Pag-ibig sa Nayon': '1115',
+        'Paltok': '1105',
+        'Paraiso': '1103',
+        'Phil-Am': '1104',
+        'Project 6': '1100',
+        'Salvacion': '1112',
+        'San Antonio': '1102',
+        'San Isidro Labrador': '1114',
+        'San Jose': '1115',
+        'Santa Cruz': '1104',
+        'Santa Teresita': '1114',
+        'Santo Cristo': '1105',
+        'Santo Domingo': '1114',
+        'Siena': '1114',
+        'Talayan': '1104',
+        'Vasra': '1105',
+        'Veterans Village': '1105',
+        'West Triangle': '1104',
+        
+        // District 2
+        'Bagong Silangan': '1119',
+        'Batasan Hills': '1126',
+        'Commonwealth': '1121',
+        'Holy Spirit': '1127',
+        'Payatas': '1119',
+        
+        // District 3
+        'Amihan': '1102',
+        'Bayanihan': '1109',
+        'Blue Ridge A': '1109',
+        'Blue Ridge B': '1109',
+        'Camp Aguinaldo': '1110',
+        'Claro': '1102',
+        'Dioquino Zobel': '1103',
+        'Horseshoe': '1112',
+        'Libis': '1110',
+        'Loyola Heights': '1108',
+        'Mangga': '1109',
+        'Marilag': '1109',
+        'Matandang Balara': '1119',
+        'Milagrosa': '1109',
+        'Pansol': '1109',
+        'San Roque': '1109',
+        'Silangan': '1102',
+        'Socorro': '1109',
+        'Tagumpay': '1109',
+        'Ugong Norte': '1110',
+        'Villa Maria Clara': '1109',
+        'White Plains': '1110',
+        
+        // District 4
+        'Bagong Lipunan ng Crame': '1112',
+        'Botocan': '1105',
+        'Central': '1100',
+        'Cruzada': '1104',
+        'Dona Imelda': '1113',
+        'Dona Josefa': '1113',
+        'Don Manuel': '1113',
+        'Duyan-duyan': '1103',
+        'East Kamias': '1102',
+        'Immaculate Conception': '1111',
+        'Kalusugan': '1100',
+        'Kamias': '1102',
+        'Kamuning': '1103',
+        'Kaunlaran': '1111',
+        'Krus na Ligas': '1101',
+        'Laging Handa': '1103',
+        'Malaya': '1101',
+        'Obrero': '1103',
+        'Old Capitol Site': '1100',
+        'Paligsahan': '1103',
+        'Pinagkaisahan': '1111',
+        'Pinyahan': '1100',
+        'Project 7': '1105',
+        'Project 8': '1106',
+        'Roxas': '1103',
+        'Sacred Heart': '1103',
+        'Saint Ignatius': '1109',
+        'San Martin de Porres': '1111',
+        'Sikatuna Village': '1101',
+        'South Triangle': '1103',
+        'Teachers Village East': '1101',
+        'Teachers Village West': '1101',
+        'U.P. Campus': '1101',
+        'U.P. Village': '1101',
+        'Valencia': '1112',
+        'West Kamias': '1102'
+    };
+    
+    // District default zip codes (fallback)
+    const districtZipCodes = {
+        'District 1': '1105',
+        'District 2': '1121', 
+        'District 3': '1109',
+        'District 4': '1103',
+        'District 5': '1118',
+        'District 6': '1116'
+    };
+    
     // District and Barangay Selection
     const districtSelect = document.getElementById('district_select');
     const barangaySelect = document.getElementById('barangay_select');
     const completeAddressInput = document.getElementById('complete_address');
+    const zipCodeInput = document.getElementById('zip_code_input');
     
     districtSelect.addEventListener('change', function() {
         const selectedDistrict = this.value;
@@ -490,9 +639,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 barangaySelect.appendChild(option);
             });
             barangaySelect.disabled = false;
+            
+            // Set default district zip code
+            if (districtZipCodes[selectedDistrict]) {
+                zipCodeInput.value = districtZipCodes[selectedDistrict];
+            }
         } else {
             barangaySelect.disabled = true;
+            zipCodeInput.value = '';
         }
+        updateCompleteAddress();
+    });
+    
+    // Update zip code when barangay is selected
+    barangaySelect.addEventListener('change', function() {
+        const selectedBarangay = this.value;
+        
+        // Update zip code based on specific barangay
+        if (selectedBarangay && barangayZipCodes[selectedBarangay]) {
+            zipCodeInput.value = barangayZipCodes[selectedBarangay];
+        }
+        
         updateCompleteAddress();
     });
     
@@ -513,7 +680,6 @@ document.addEventListener('DOMContentLoaded', function() {
         completeAddressInput.value = address;
     }
     
-    barangaySelect.addEventListener('change', updateCompleteAddress);
     document.querySelector('input[name="street"]').addEventListener('input', updateCompleteAddress);
     document.querySelector('input[name="zip_code"]').addEventListener('input', updateCompleteAddress);
 });
@@ -673,6 +839,17 @@ function isSameDate(date1, date2) {
            date1.getMonth() === date2.getMonth() &&
            date1.getDate() === date2.getDate();
 }
+
+// Prevent double submission
+document.querySelector('form').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn.disabled) {
+        e.preventDefault();
+        return false;
+    }
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registering...';
+});
 </script>
 
 <!-- Senior-Friendly Styles with Custom Calendar -->

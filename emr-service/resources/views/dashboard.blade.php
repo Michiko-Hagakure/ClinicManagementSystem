@@ -137,10 +137,10 @@
                             <a href="{{ route('patients.show', $patient) }}" class="list-group-item list-group-item-action py-2 border-0">
                                 <div class="d-flex w-100 justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-1">{{ $patient->full_name }}</h6>
-                                        <small class="text-muted">{{ $patient->age }} years, {{ $patient->sex }} | {{ $patient->contact_number }}</small>
+                                        <h6 class="mb-1">{{ $patient->first_name }} {{ $patient->last_name }}</h6>
+                                        <small class="text-muted">{{ $patient->age ?? 'N/A' }} years, {{ ucfirst($patient->gender) }} | {{ $patient->phone_number ?? 'N/A' }}</small>
                                     </div>
-                                    <small class="text-muted">ID: {{ $patient->patient_id }}</small>
+                                    <small class="text-muted">ID: P{{ str_pad($patient->id, 4, '0', STR_PAD_LEFT) }}</small>
                                 </div>
                             </a>
                         @endforeach
@@ -167,16 +167,12 @@
                             <a href="{{ route('consultations.show', $consultation) }}" class="list-group-item list-group-item-action py-2 border-0">
                                 <div class="d-flex w-100 justify-content-between align-items-start">
                                     <div class="flex-grow-1">
-                                        <h6 class="mb-1">{{ $consultation->patient->full_name }}</h6>
-                                        <p class="mb-1 small">{{ Str::limit($consultation->chief_complaint, 60) }}</p>
-                                        <small class="text-muted">BP: {{ $consultation->bp }} | Temp: {{ $consultation->temparature }}°C</small>
+                                        <h6 class="mb-1">{{ $consultation->patient->first_name }} {{ $consultation->patient->last_name }}</h6>
+                                        <p class="mb-1 small">{{ Str::limit($consultation->chief_complaint ?? 'No complaint', 60) }}</p>
+                                        <small class="text-muted">BP: {{ $consultation->bp ?? '0/0' }} | Temp: {{ $consultation->temparature ?? '0.0' }}°C</small>
                                     </div>
                                     <small class="text-muted ms-2">
-                                        @if($consultation->consultation_date)
-                                            {{ $consultation->consultation_date->format('M d') }}
-                                        @else
-                                            No date
-                                        @endif
+                                        {{ $consultation->created_at->format('M d') }}
                                     </small>
                                 </div>
                             </a>

@@ -6,6 +6,10 @@
     <title>@yield('title', 'Doctor Portal - EMR System')</title>
     
     @vite(['resources/scss/app.scss', 'resources/js/app.js'])
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    <style>
+        html, body { overflow-x: hidden; }
+    </style>
 </head>
 <body>
     <div class="d-flex" style="min-height: 100vh;">
@@ -17,15 +21,53 @@
             </a>
 
             <div class="text-center my-3">
-                <img src="{{ asset('images/avatar.jpg') }}" alt="Doctor Avatar" 
-                    class="rounded-circle mb-2" width="50" height="50">
-                <h6 class="text-white mb-0">{{ session('user_name', 'Dr. Name') }}</h6>
-                <small class="text-white-50">{{ session('user_role') === 'doctor' ? 'Physician' : ucfirst(str_replace('_', ' ', session('user_role', 'physician'))) }}</small>
+                @php
+                    // Get user data from session (check both formats)
+                    $userName = session('user_name') ?? session('name', 'Dr. Name');
+                    $userRole = session('user_role') ?? session('role', 'doctor');
+                    $userId = session('user_id') ?? session('id');
+                    
+                    // Try to get profile picture
+                    $profilePicture = session('user_profile_picture');
+                    
+                    // If not in session, fetch from Auth API
+                    if (!$profilePicture && $userId) {
+                        try {
+                            $response = \Illuminate\Support\Facades\Http::get('http://127.0.0.1:8000/api/users/' . $userId);
+                            if ($response->successful()) {
+                                $user = $response->json();
+                                $profilePicture = $user['profile_picture_url'] ?? null;
+                                session(['user_profile_picture' => $profilePicture]);
+                            }
+                        } catch (\Exception $e) {
+                            // Silent fail
+                        }
+                    }
+                    
+                    // Set default if still null
+                    if (!$profilePicture) {
+                        $profilePicture = asset('images/avatar.jpg');
+                    }
+                    
+                    // Convert localhost URLs to the correct auth service port
+                    if (str_contains($profilePicture, 'localhost')) {
+                        $profilePicture = str_replace('http://localhost', 'http://127.0.0.1:8000', $profilePicture);
+                    }
+                    // If the profile picture is a relative path from auth service
+                    elseif (str_starts_with($profilePicture, '/uploads/')) {
+                        $profilePicture = 'http://127.0.0.1:8000' . $profilePicture;
+                    }
+                @endphp
+                <img src="{{ $profilePicture }}" alt="Doctor Avatar" 
+                    class="rounded-circle mb-2" width="80" height="80" style="object-fit: cover; border: 3px solid rgba(255,255,255,0.3);">
+                <h6 class="text-white mb-0">{{ $userName }}</h6>
+                <small class="text-white-50">{{ $userRole === 'doctor' ? 'Physician' : ucfirst(str_replace('_', ' ', $userRole)) }}</small>
             </div>
 
             <hr>
             
-            <ul class="nav nav-pills flex-column mb-auto">
+            <div class="sidebar-menu" style="flex:1; overflow-y:auto; overflow-x:hidden;">
+            <ul class="nav nav-pills flex-column mb-0">
                 <li class="nav-item mb-1">
                     <a href="{{ route('doctor.dashboard') }}" class="nav-link py-2 {{ request()->routeIs('doctor.dashboard') ? 'active' : '' }}">
                         <i class="bi bi-speedometer2 me-2"></i>Dashboard
@@ -35,20 +77,17 @@
                 <li class="nav-item mb-1">
                     <a href="{{ route('doctor.patient-queue') }}" class="nav-link py-2 {{ request()->routeIs('doctor.patient-queue') ? 'active' : '' }}">
                         <i class="bi bi-clock-history me-2"></i>Patient Queue
-                        @if(isset($pendingConsultations) && $pendingConsultations > 0)
-                            <span class="badge bg-warning text-dark ms-auto">{{ $pendingConsultations }}</span>
-                        @endif
                     </a>
                 </li>
             
                 <li class="nav-item mb-1">
-                    <a href="{{ route('patients.index') }}" class="nav-link py-2 {{ request()->is('patients*') && !request()->routeIs('doctor.*') ? 'active' : '' }}">
+                    <a href="{{ route('doctor.patient-records') }}" class="nav-link py-2 {{ request()->routeIs('doctor.patient-records') ? 'active' : '' }}">
                         <i class="bi bi-people-fill me-2"></i>Patient Records
                     </a>
                 </li>
             
                 <li class="nav-item mb-1">
-                    <a href="{{ route('consultations.index') }}" class="nav-link py-2 {{ request()->is('consultations*') && !request()->routeIs('doctor.*') ? 'active' : '' }}">
+                    <a href="{{ route('doctor.my-consultations') }}" class="nav-link py-2 {{ request()->routeIs('doctor.my-consultations') ? 'active' : '' }}">
                         <i class="bi bi-file-earmark-medical me-2"></i>My Consultations
                     </a>
                 </li>
@@ -62,31 +101,17 @@
                     </a>
                 </li>
 
-                <li class="nav-item mb-1">
-                    <a href="#" class="nav-link py-2">
-                        <i class="bi bi-file-earmark-text me-2"></i>Medical Certificates
-                        <span class="badge bg-secondary ms-auto">Soon</span>
-                    </a>
-                </li>
-
-                <li class="nav-item mb-1">
-                    <a href="#" class="nav-link py-2">
-                        <i class="bi bi-prescription2 me-2"></i>Prescriptions
-                        <span class="badge bg-secondary ms-auto">Soon</span>
-                    </a>
-                </li>
             </ul>
-            
-            <hr>
-            
-            <!-- Logout Button -->
-            <a href="http://127.0.0.1:8000/logout" class="nav-link py-2 w-100 text-start text-white">
-                <i class="bi bi-box-arrow-right me-2"></i>Sign out
-            </a>
+            </div>
+            <div class="p-2">
+                <a href="http://127.0.0.1:8000/logout" class="nav-link py-2 text-white" onclick="return confirmLogout(event)">
+                    <i class="bi bi-box-arrow-right me-2"></i>Log out
+                </a>
+            </div>
         </div>
         
         <!-- Main Content -->
-        <main class="flex-grow-1" style="margin-left: 220px; width: calc(100% - 220px);">
+        <main class="flex-grow-1" style="margin-left: 220px; box-sizing: border-box; overflow-x: hidden;">
             <div class="container-fluid h-100 p-2">
                 @if(session('success'))
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -106,5 +131,26 @@
             </div>
         </main>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script>
+        function confirmLogout(event) {
+            event.preventDefault();
+            Swal.fire({
+                title: 'Logout Confirmation',
+                text: 'Are you sure you want to logout?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#00A689',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, logout',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = event.target.closest('a').href;
+                }
+            });
+            return false;
+        }
+    </script>
 </body>
 </html>

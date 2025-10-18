@@ -105,6 +105,12 @@
             border-radius: 12px;
             border: none;
         }
+        .form-label-aligned {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
     </style>
 </head>
 <body>
@@ -138,53 +144,64 @@
                     <form method="POST" action="{{ route('login.post') }}" id="loginForm">
                         @csrf
                         
-                        <!-- Email Input -->
-                        <div class="mb-3">
-                            <label for="email" class="form-label fw-semibold">
-                                <i class="bi bi-envelope me-2 text-primary"></i>Email Address
+                        <!-- Employee ID Input -->
+                        <div class="row mb-3 justify-content-center">
+                            <label for="employee_id" class="col-4 text-end fw-semibold form-label-aligned">
+                                <span><i class="bi bi-person-badge me-2 text-primary"></i>Employee ID</span>
                             </label>
-                            <input type="email" 
-                                   class="form-control @error('email') is-invalid @enderror" 
-                                   id="email" 
-                                   name="email" 
-                                   value="{{ old('email') }}" 
-                                   required 
-                                   autocomplete="email" 
-                                   placeholder="Enter your email address">
-                            @error('email')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <div class="col-7">
+                                <input type="text" 
+                                       class="form-control @error('employee_id') is-invalid @enderror" 
+                                       id="employee_id" 
+                                       name="employee_id" 
+                                       value="{{ old('employee_id') }}" 
+                                       required 
+                                       maxlength="6"
+                                       pattern="[0-9]{6}"
+                                       autocomplete="off" 
+                                       placeholder="123456">
+                                @error('employee_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted d-block mt-1">Example: 123456</small>
+                            </div>
                         </div>
 
                         <!-- Password Input -->
-                        <div class="mb-4">
-                            <label for="password" class="form-label fw-semibold">
-                                <i class="bi bi-lock me-2 text-primary"></i>Password
+                        <div class="row mb-4 justify-content-center">
+                            <label for="password" class="col-4 text-end fw-semibold form-label-aligned">
+                                <span><i class="bi bi-lock me-2 text-primary"></i>Password</span>
                             </label>
-                            <div class="position-relative">
-                                <input type="password" 
-                                       class="form-control @error('password') is-invalid @enderror" 
-                                       id="password" 
-                                       name="password" 
-                                       required 
-                                       autocomplete="current-password"
-                                       placeholder="Enter your password">
-                                <button type="button" class="password-toggle" onclick="togglePassword()">
-                                    <i class="bi bi-eye" id="toggleIcon"></i>
-                                </button>
+                            <div class="col-7">
+                                <div class="position-relative">
+                                    <input type="password" 
+                                           class="form-control @error('password') is-invalid @enderror" 
+                                           id="password" 
+                                           name="password" 
+                                           required 
+                                           autocomplete="current-password"
+                                           placeholder="Enter your password">
+                                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                                        <i class="bi bi-eye" id="toggleIcon"></i>
+                                    </button>
+                                </div>
+                                @error('password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
-                            @error('password')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
                         </div>
 
                         <!-- Submit Button -->
-                        <button type="submit" class="btn btn-primary btn-login w-100">
-                            <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
-                            <span class="btn-text">
-                                <i class="bi bi-box-arrow-in-right me-2"></i>Log In
-                            </span>
-                        </button>
+                        <div class="row justify-content-center">
+                            <div class="col-7 offset-4">
+                                <button type="submit" class="btn btn-primary btn-login w-100">
+                                    <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                                    <span class="btn-text">
+                                        <i class="bi bi-box-arrow-in-right me-2"></i>Log In
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
                     </form>
             </div>
         </div>
@@ -215,7 +232,7 @@
 
         // Auto-focus first input
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('email').focus();
+            document.getElementById('employee_id').focus();
         });
     </script>
 </body>

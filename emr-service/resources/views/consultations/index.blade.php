@@ -1,4 +1,10 @@
-@extends('layouts.app')
+@php
+    // Check if user is a doctor to use appropriate layout
+    $userRole = session('user_role') ?? session('role', '');
+    $layout = $userRole === 'doctor' ? 'layouts.doctor' : 'layouts.app';
+@endphp
+
+@extends($layout)
 
 @section('title', 'All Consultations')
 
@@ -87,33 +93,75 @@
     <!-- Search and Filter -->
     <div class="card shadow-sm mb-3">
         <div class="card-body py-3">
+            <form method="GET" action="{{ route('consultations.index') }}" id="filterForm">
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" id="searchInput" class="form-control" placeholder="Search consultations by patient name, complaint, or diagnosis...">
+                            <input type="text" name="search" id="searchInput" class="form-control" 
+                                   placeholder="Search consultations by patient name, complaint, or diagnosis..."
+                                   value="{{ request('search') }}">
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <select id="statusFilter" class="form-select">
+                        <select name="status" id="statusFilter" class="form-select">
                         <option value="">All Status</option>
-                        <option value="completed">Completed</option>
-                        <option value="pending">Pending</option>
-                        <option value="follow_up_required">Follow-up Required</option>
+                            <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+                            <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="follow_up_required" {{ request('status') == 'follow_up_required' ? 'selected' : '' }}>Follow-up Required</option>
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <input type="date" id="dateFilter" class="form-control">
+                        <div class="input-group">
+                            <input type="date" name="date" id="dateFilter" class="form-control"
+                                   value="{{ request('date') }}">
+                            @if(request()->hasAny(['search', 'status', 'date']))
+                                <a href="{{ route('consultations.index') }}" class="btn btn-outline-secondary" title="Clear Filters">
+                                    <i class="bi bi-x-circle"></i>
+                                </a>
+                            @endif
                 </div>
             </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-funnel me-1"></i>Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
+
+    <!-- Active Filters Indicator -->
+    @if(request()->hasAny(['search', 'status', 'date']))
+        <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+            <i class="bi bi-funnel me-2"></i>
+            <strong>Active Filters:</strong>
+            @if(request('search'))
+                <span class="badge bg-primary me-1">Search: "{{ request('search') }}"</span>
+            @endif
+            @if(request('status'))
+                <span class="badge bg-success me-1">Status: {{ ucfirst(str_replace('_', ' ', request('status'))) }}</span>
+            @endif
+            @if(request('date'))
+                <span class="badge bg-warning me-1">Date: {{ \Carbon\Carbon::parse(request('date'))->format('M d, Y') }}</span>
+            @endif
+            <a href="{{ route('consultations.index') }}" class="btn btn-sm btn-outline-secondary ms-2">
+                <i class="bi bi-x-circle me-1"></i>Clear All
+            </a>
+        </div>
+    @endif
 
     <!-- Consultations List -->
     <div class="card shadow-sm">
         <div class="card-header bg-light">
             <h6 class="mb-0">
                 <i class="bi bi-file-earmark-medical me-2"></i>Consultation Records
+                @if($consultations->total() > 0)
+                    <span class="badge bg-primary ms-2">{{ $consultations->total() }} total</span>
+                @endif
             </h6>
         </div>
         <div class="card-body p-0">
@@ -149,7 +197,7 @@
                                             @if ($consultation->patient)
                                                 <a href="{{ route('patients.show', $consultation->patient->id) }}" class="fw-bold text-decoration-none">{{ $consultation->patient->full_name }}</a>
                                                 <div class="text-muted small">
-                                                    ID: {{ $consultation->patient->id }}
+                                                    ID: {{ $consultation->patient->patient_code }}
                                                 </div>
                                             @else
                                                 <span class="text-muted">Patient not found</span>
@@ -237,25 +285,50 @@
     </div>
 </div>
 
-<!-- Search and Filter JavaScript -->
+<!-- Enhanced Filter JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
     const dateFilter = document.getElementById('dateFilter');
+    const filterForm = document.getElementById('filterForm');
     const tableRows = document.querySelectorAll('tbody tr');
 
-    function filterTable() {
+    let debounceTimer;
+
+    // Auto-submit form with debounce for search input
+    function debounceSubmit() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            filterForm.submit();
+        }, 500);
+    }
+
+    // Immediate submit for select/date changes
+    function immediateSubmit() {
+        clearTimeout(debounceTimer);
+        filterForm.submit();
+    }
+
+    // Real-time client-side filtering for better UX
+    function filterTableClientSide() {
         const searchTerm = searchInput.value.toLowerCase();
         const statusValue = statusFilter.value.toLowerCase();
         const dateValue = dateFilter.value;
 
+        let visibleCount = 0;
+
         tableRows.forEach(row => {
-            const patientName = row.querySelector('.patient-info strong').textContent.toLowerCase();
-            const chiefComplaint = row.querySelector('.chief-complaint').textContent.toLowerCase();
-            const assessment = row.querySelector('.assessment')?.textContent.toLowerCase() || '';
-            const status = row.querySelector('.badge').textContent.toLowerCase();
-            const consultationDate = row.querySelector('.consultation-date strong').textContent;
+            const patientNameElement = row.querySelector('.patient-info a');
+            const patientName = patientNameElement ? patientNameElement.textContent.toLowerCase() : '';
+            const chiefComplaintElement = row.querySelector('.chief-complaint');
+            const chiefComplaint = chiefComplaintElement ? chiefComplaintElement.textContent.toLowerCase() : '';
+            const assessmentElement = row.querySelector('.assessment');
+            const assessment = assessmentElement ? assessmentElement.textContent.toLowerCase() : '';
+            const statusElement = row.querySelector('.badge');
+            const status = statusElement ? statusElement.textContent.toLowerCase() : '';
+            const consultationDateElement = row.querySelector('.consultation-date .fw-bold');
+            const consultationDate = consultationDateElement ? consultationDateElement.textContent : '';
 
             let showRow = true;
 
@@ -271,24 +344,56 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Date filter
-            if (dateValue) {
-                const filterDate = new Date(dateValue).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                });
-                if (!consultationDate.includes(filterDate.replace(',', ','))) {
+            if (dateValue && consultationDate) {
+                const filterDate = new Date(dateValue);
+                const consultationDateObj = new Date(consultationDate);
+                if (filterDate.toDateString() !== consultationDateObj.toDateString()) {
                     showRow = false;
                 }
             }
 
             row.style.display = showRow ? '' : 'none';
+            if (showRow) visibleCount++;
+        });
+
+        // Update result count if needed
+        updateResultCount(visibleCount);
+    }
+
+    function updateResultCount(count) {
+        const totalRows = tableRows.length;
+        const resultInfo = document.querySelector('.text-muted small');
+        if (resultInfo && count !== totalRows) {
+            resultInfo.innerHTML = `Showing ${count} of ${totalRows} consultations (filtered)`;
+        }
+    }
+
+    // Event listeners
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            filterTableClientSide();
+            debounceSubmit();
         });
     }
 
-    searchInput.addEventListener('input', filterTable);
-    statusFilter.addEventListener('change', filterTable);
-    dateFilter.addEventListener('change', filterTable);
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            filterTableClientSide();
+            immediateSubmit();
+        });
+    }
+
+    if (dateFilter) {
+        dateFilter.addEventListener('change', function() {
+            filterTableClientSide();
+            immediateSubmit();
+        });
+    }
+
+    // Initialize client-side filtering on page load
+    if (tableRows.length > 0) {
+        filterTableClientSide();
+    }
 });
 </script>
 

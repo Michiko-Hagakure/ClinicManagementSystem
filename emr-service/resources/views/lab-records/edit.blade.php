@@ -8,7 +8,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h1 class="h4 mb-0 text-gray-800">Edit Lab Result</h1>
-            <small class="text-muted">{{ $labResult->patient->full_name }} - {{ $labResult->test_name }} on 
+            <small class="text-muted">{{ $labResult->patient?->full_name ?? 'Unknown Patient' }} - {{ $labResult->test_name }} on 
                 @if($labResult->test_date)
                     {{ $labResult->test_date->format('F d, Y') }}
                 @else

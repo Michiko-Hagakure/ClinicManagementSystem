@@ -178,7 +178,7 @@
                 <h6 class="m-0 font-weight-bold">
                     <i class="bi bi-file-earmark-medical me-2"></i>Recent Consultations
                 </h6>
-                <a href="{{ route('consultations.index') }}" class="btn btn-light btn-sm">
+                <a href="{{ route('doctor.my-consultations') }}" class="btn btn-light btn-sm">
                     <i class="bi bi-arrow-right me-1"></i>View All
                 </a>
             </div>
@@ -203,9 +203,16 @@
                                         <strong>{{ $consultation->patient->first_name }} {{ $consultation->patient->last_name }}</strong>
                                         <br><small class="text-muted">{{ $consultation->patient->patient_id }}</small>
                                     </td>
-                                    <td>{{ $consultation->consultation_date ? $consultation->consultation_date->format('M d, Y') : 'N/A' }}</td>
+                                    <td>
+                                        @if($consultation->consultation_date)
+                                            <div><strong>{{ $consultation->consultation_date->format('M d, Y') }}</strong></div>
+                                            <small class="text-muted">{{ $consultation->consultation_date->format('g:i A') }}</small>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
                                     <td>{{ Str::limit($consultation->chief_complaint ?? 'Not specified', 50) }}</td>
-                                    <td>{{ Str::limit($consultation->diagnosis ?? 'Pending', 40) }}</td>
+                                    <td>{{ Str::limit($consultation->assessment ?? 'Pending', 40) }}</td>
                                     <td>
                                         @if($consultation->status === 'completed')
                                             <span class="badge bg-success">Completed</span>

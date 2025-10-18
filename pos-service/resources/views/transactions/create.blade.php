@@ -70,7 +70,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="h3 mb-0 text-gray-800">New Transaction</h1>
-        <p class="text-muted mb-0">Process patient billing after consultation</p>
+        <p class="text-muted mb-0">Process patient billing for services rendered</p>
     </div>
     <div>
         <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">
@@ -386,49 +386,6 @@
         </div>
     </div>
     
-    <!-- Chief Complaint -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header bg-info text-white">
-                    <h6 class="m-0 font-weight-bold">
-                        <i class="bi bi-chat-left-text me-2"></i>Chief Complaint
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="mb-3">
-                                <label for="chief_complaint" class="form-label">What brings the patient in today? *</label>
-                                <textarea class="form-control" id="chief_complaint" name="chief_complaint" rows="3" 
-                                          placeholder="Enter the patient's main concern or symptoms..." required></textarea>
-                                <div class="form-text">
-                                    <i class="bi bi-info-circle me-1"></i>
-                                    This will be automatically shared with the doctor for the consultation.
-                                </div>
-                                @error('chief_complaint')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="consultation_notes" class="form-label">Additional Notes</label>
-                                <textarea class="form-control" id="consultation_notes" name="consultation_notes" rows="3" 
-                                          placeholder="Any additional observations..."></textarea>
-                                <div class="form-text">
-                                    Brief notes about the patient's condition or behavior.
-                                </div>
-                                @error('consultation_notes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
     
     <!-- Doctor Assignment -->
     <div class="row mb-4">
@@ -445,13 +402,7 @@
                             <div class="mb-3">
                                 <label for="assigned_doctor" class="form-label">Assign Doctor *</label>
                                 <select class="form-select" id="assigned_doctor" name="assigned_doctor" required>
-                                    <option value="">Select Doctor</option>
-                                    <option value="Dr. Maria Santos">Dr. Maria Santos</option>
-                                    <option value="Dr. John Rodriguez">Dr. John Rodriguez</option>
-                                    <option value="Dr. Lisa Chen">Dr. Lisa Chen</option>
-                                    <option value="Dr. Anna Garcia">Dr. Anna Garcia</option>
-                                    <option value="Dr. Michael Torres">Dr. Michael Torres</option>
-                                    <option value="Dr. Sarah Johnson">Dr. Sarah Johnson</option>
+                                    <option value="">Loading doctors...</option>
                                 </select>
                                 @error('assigned_doctor')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -462,7 +413,7 @@
                             <div class="mb-3">
                                 <label for="appointment_time" class="form-label">Appointment Time</label>
                                 <input type="text" class="form-control" id="appointment_time" name="appointment_time" 
-                                       placeholder="e.g., Today, 2:30 PM" value="Today, {{ date('g:i A') }}">
+                                       placeholder="e.g., Today, 2:30 PM" value="Today, {{ date('g:i A') }}" readonly>
                                 @error('appointment_time')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -608,6 +559,34 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let selectedServices = [];
     let subtotal = 0;
+    
+    // Load doctors from Auth service
+    loadDoctors();
+    
+    function loadDoctors() {
+        const doctorSelect = document.getElementById('assigned_doctor');
+        
+        fetch('http://127.0.0.1:8000/api/doctors')
+            .then(response => response.json())
+            .then(doctors => {
+                doctorSelect.innerHTML = '<option value="">Select Doctor</option>';
+                
+                if (doctors.length === 0) {
+                    doctorSelect.innerHTML += '<option value="" disabled>No doctors available</option>';
+                } else {
+                    doctors.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.name;
+                        option.textContent = `${doctor.name}${doctor.department ? ' - ' + doctor.department : ''}`;
+                        doctorSelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading doctors:', error);
+                doctorSelect.innerHTML = '<option value="">Error loading doctors</option>';
+            });
+    }
     
     // Service selection handler with visual feedback
     serviceCheckboxes.forEach(checkbox => {
@@ -1030,6 +1009,12 @@ document.addEventListener('DOMContentLoaded', function() {
             cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
+                // Disable submit button immediately to prevent double submission
+                const submitButton = document.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
+                
                 // Show processing alert
                 Swal.fire({
                     title: 'Processing Payment...',
@@ -1044,12 +1029,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Submit the form after a short delay to show processing
                 setTimeout(() => {
+                    const form = document.getElementById('transactionForm');
+                    // Check if form is already being submitted
+                    if (form.dataset.submitting === 'true') {
+                        return;
+                    }
+                    // Mark form as submitting
+                    form.dataset.submitting = 'true';
                     // Submit the form normally - checkboxes will handle the data
-                    document.getElementById('transactionForm').submit();
+                    form.submit();
                 }, 1500);
             }
         });
     });
+    
+    // Real-time appointment time updater
+    function updateAppointmentTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+        });
+        const appointmentTimeField = document.getElementById('appointment_time');
+        if (appointmentTimeField) {
+            appointmentTimeField.value = `Today, ${timeString}`;
+        }
+    }
+    
+    // Update appointment time immediately
+    updateAppointmentTime();
+    
+    // Update appointment time every 30 seconds (less resource intensive than every second)
+    setInterval(updateAppointmentTime, 30000);
 });
 </script>
 @endsection

@@ -34,6 +34,9 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('patients', PatientController::class)->except(['index']);
     
     // Consultation endpoints  
+    Route::get('consultations/find-for-assignment', [ConsultationController::class, 'findForAssignment'])->name('api.consultations.find-for-assignment');
+    Route::patch('consultations/{consultation}/assign-doctor', [ConsultationController::class, 'assignDoctor'])->name('api.consultations.assign-doctor');
+    Route::get('consultations/check', [ConsultationController::class, 'checkExists'])->name('api.consultations.check');
     Route::apiResource('consultations', ConsultationController::class);
     
     // Lab Results endpoints

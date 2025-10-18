@@ -50,4 +50,19 @@ return [
         'api_key' => env('EMR_API_KEY'), // For future authentication if needed
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory Service Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for connecting to the Inventory service to manage medicine
+    | stock and pricing for pharmacy sales in the POS system.
+    |
+    */
+    'inventory' => [
+        'base_url' => env('INVENTORY_SERVICE_URL', 'http://127.0.0.1:8003'),
+        'timeout' => env('INVENTORY_SERVICE_TIMEOUT', 10),
+        'api_key' => env('INVENTORY_API_KEY'), // For future authentication if needed
+    ],
+
 ];

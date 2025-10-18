@@ -76,7 +76,7 @@
                         @foreach($patients as $patient)
                             <tr>
                                 <td class="px-3 py-2">
-                                    <span class="badge bg-primary">{{ $patient->patient_id }}</span>
+                                    <span class="badge bg-primary">{{ $patient->patient_code }}</span>
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center">
@@ -107,10 +107,10 @@
                                     <span class="badge bg-info">{{ $patient->age }} years</span>
                                 </td>
                                 <td>
-                                    <i class="bi bi-telephone me-1"></i>{{ $patient->contact_number }}
+                                    <i class="bi bi-telephone me-1"></i>{{ $patient->phone_number ?? 'N/A' }}
                                 </td>
                                 <td>
-                                    <span class="badge bg-secondary">{{ $patient->civil_staus }}</span>
+                                    <span class="badge bg-secondary">{{ $patient->civil_status ?? 'N/A' }}</span>
                                 </td>
                                 <td>
                                     <small class="text-muted">{{ Str::limit($patient->address, 30) }}</small>
@@ -127,12 +127,6 @@
                                            title="Edit">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <button type="button" 
-                                                class="btn btn-outline-danger" 
-                                                title="Delete"
-                                                onclick="confirmDelete({{ $patient->patient_id }})">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -166,37 +160,5 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirm Delete</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this patient record?</p>
-                <p class="text-danger"><strong>Warning:</strong> This action cannot be undone and will also delete all associated consultations and lab results.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteForm" method="POST" style="display: inline;">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Delete Patient</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 
-<script>
-function confirmDelete(patientId) {
-    const form = document.getElementById('deleteForm');
-    form.action = `/patients/${patientId}`;
-    
-    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    modal.show();
-}
-</script>
 @endsection

@@ -121,11 +121,11 @@
                                 <div>
                                     <h6 class="mb-1">{{ $consultation->patient->first_name }} {{ $consultation->patient->last_name }}</h6>
                                     <small class="text-muted">
-                                        <i class="bi bi-person-badge me-1"></i>ID: {{ $consultation->patient->patient_id }}
+                                        <i class="bi bi-person-badge me-1"></i>ID: {{ $consultation->patient->patient_code }}
                                         <span class="mx-2">•</span>
-                                        <i class="bi bi-calendar me-1"></i>{{ $consultation->patient->date_of_birth ? $consultation->patient->date_of_birth->format('M d, Y') : 'N/A' }}
+                                        <i class="bi bi-calendar me-1"></i>{{ optional($consultation->patient->birth_date)->format('M d, Y') ?? 'N/A' }}
                                         <span class="mx-2">•</span>
-                                        <i class="bi bi-gender-{{ strtolower($consultation->patient->sex ?? 'ambiguous') }} me-1"></i>{{ $consultation->patient->sex ?? 'N/A' }}
+                                        <i class="bi bi-gender-{{ strtolower($consultation->patient->gender ?? 'ambiguous') }} me-1"></i>{{ $consultation->patient->gender ?? 'N/A' }}
                                     </small>
                                 </div>
                             </td>
@@ -164,7 +164,7 @@
                                        class="btn btn-primary btn-sm">
                                         <i class="bi bi-person-check me-1"></i>See Patient
                                     </a>
-                                    <a href="{{ route('patients.show', $consultation->patient) }}" 
+                                    <a href="{{ route('doctor.view-patient', $consultation->patient) }}" 
                                        class="btn btn-outline-info btn-sm">
                                         <i class="bi bi-eye me-1"></i>History
                                     </a>

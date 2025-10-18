@@ -1,6 +1,13 @@
-@extends('layouts.app')
+@php
+    // Check if user is a doctor to use appropriate layout
+    $userRole = session('user_role') ?? session('role', '');
+    $layout = $userRole === 'doctor' ? 'layouts.doctor' : 'layouts.app';
+    $title = $userRole === 'doctor' ? 'New Consultation - Doctor Portal' : 'New Consultation';
+@endphp
 
-@section('title', 'New Consultation')
+@extends($layout)
+
+@section('title', $title)
 
 @section('content')
 <div class="container-fluid">
@@ -8,11 +15,17 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h1 class="h4 mb-0 text-gray-800">New Consultation</h1>
-            <small class="text-muted">Mary Angels Diagnostic Clinic - Patient Consultation Form</small>
+            <small class="text-muted">{{ request()->is('doctor/*') ? 'Doctor Portal - Patient Consultation Form' : 'Mary Angels Diagnostic Clinic - Patient Consultation Form' }}</small>
         </div>
+        @if(request()->is('doctor/*'))
+            <a href="{{ route('doctor.my-consultations') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to My Consultations
+            </a>
+        @else
         <a href="{{ route('consultations.index') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-2"></i>Back to Consultations
         </a>
+        @endif
     </div>
 
     <!-- Consultation Form -->
@@ -32,13 +45,22 @@
                 </div>
                 
                 <div class="card-body p-4">
-                    <form action="{{ route('consultations.store') }}" method="POST" id="consultationForm">
+                    <form action="{{ request()->is('doctor/*') ? route('doctor.consultations.store') : route('consultations.store') }}" method="POST" id="consultationForm">
                         @csrf
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="patient_id" class="form-label">Patient *</label>
                                 <select name="patient_id" id="patient_id" class="form-select" required>
-                                    <!-- Options will be populated by Select2 -->
+                                    <option value="">Select a patient</option>
+                                    @if(isset($patients) && $patients->count() > 0)
+                                        @foreach($patients as $p)
+                                            <option value="{{ $p->id }}" {{ old('patient_id') == $p->id ? 'selected' : '' }}>
+                                                {{ $p->full_name }} (ID: {{ $p->patient_code }}) - {{ $p->age ?? 'N/A' }}yrs, {{ $p->gender ?? 'N/A' }}
+                                            </option>
+                                        @endforeach
+                                    @else
+                                        <!-- Fallback: Options will be populated by Select2 AJAX -->
+                                    @endif
                                 </select>
                                 @error('patient_id')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -248,9 +270,15 @@
                         <div class="row mt-4">
                             <div class="col-12">
                                 <div class="d-flex justify-content-between">
+                                    @if(request()->is('doctor/*'))
+                                        <a href="{{ route('doctor.my-consultations') }}" class="btn btn-outline-secondary btn-lg">
+                                            <i class="bi bi-x-circle me-2"></i>Cancel
+                                        </a>
+                                    @else
                                     <a href="{{ route('consultations.index') }}" class="btn btn-outline-secondary btn-lg">
                                         <i class="bi bi-x-circle me-2"></i>Cancel
                                     </a>
+                                    @endif
                                     <button type="submit" class="btn btn-success btn-lg">
                                         <i class="bi bi-file-earmark-check me-2"></i>Save Consultation
                                     </button>
@@ -513,8 +541,22 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.show();
     });
     
-    // Initialize Select2 for patient search
-    $('#patient_id').select2({
+    // Check if patients are pre-loaded or if we need Select2 AJAX
+    const patientSelect = $('#patient_id');
+    const hasPreloadedOptions = patientSelect.find('option').length > 1; // More than just the empty option
+    
+    if (hasPreloadedOptions) {
+        console.log('Using pre-loaded patients, no Select2 AJAX needed');
+        // Just enhance with basic Select2 for search functionality
+        patientSelect.select2({
+            placeholder: 'Select a patient',
+            allowClear: true,
+            width: '100%'
+        });
+    } else {
+        console.log('No pre-loaded patients, initializing Select2 with AJAX');
+        // Initialize Select2 with AJAX for dynamic loading
+        patientSelect.select2({
         placeholder: 'Search for a patient by name or ID',
         minimumInputLength: 1,
         ajax: {
@@ -522,16 +564,28 @@ document.addEventListener('DOMContentLoaded', function() {
             dataType: 'json',
             delay: 250,
             data: function(params) {
+                    console.log('Select2 searching for:', params.term);
                 return {
                     q: params.term // search term
                 };
             },
             processResults: function(data) {
+                    console.log('Select2 received data:', data);
+                    
+                    if (!Array.isArray(data)) {
+                        console.error('Expected array but received:', typeof data, data);
+                        return { results: [] };
+                    }
+                    
                 return {
                     results: data.map(function(patient) {
+                            console.log('Processing patient:', patient);
+                            const displayText = (patient.full_name || patient.first_name + ' ' + patient.last_name) + 
+                                              ' (ID: ' + (patient.patient_code || patient.id) + ') - ' + 
+                                              (patient.age || 'N/A') + ' yrs';
                         return {
                             id: patient.id,
-                            text: patient.full_name + ' (ID: ' + patient.id + ') - ' + patient.age + ' yrs',
+                                text: displayText,
                             patient: patient
                         };
                     })
@@ -541,7 +595,16 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         templateResult: formatPatient,
         templateSelection: formatPatientSelection
-    });
+        }).on('select2:open', function() {
+            console.log('Select2 dropdown opened');
+        }).on('select2:close', function() {
+            console.log('Select2 dropdown closed');
+        }).on('select2:loading', function() {
+            console.log('Select2 loading data...');
+        }).on('select2:loaded', function() {
+            console.log('Select2 data loaded');
+        });
+    }
 
     function formatPatient(patient) {
         if (patient.loading) {
@@ -554,10 +617,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return patient.text || 'Select a patient';
     }
 
-    // Handle patient selection
-    $('#patient_id').on('select2:select', function(e) {
+    // Handle patient selection (works for both pre-loaded and AJAX)
+    $('#patient_id').on('select2:select change', function(e) {
+        if (e.type === 'select2:select') {
         const patient = e.params.data;
-        $('#patient_id').val(patient.id).trigger('change'); // Trigger change to update hidden input
+            $('#patient_id').val(patient.id).trigger('change');
+        }
         updateStatusDisplay(); // Update status after patient selection
     });
 

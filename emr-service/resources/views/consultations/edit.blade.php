@@ -1,4 +1,10 @@
-@extends('layouts.app')
+@php
+    // Check if user is a doctor to use appropriate layout
+    $userRole = session('user_role') ?? session('role', '');
+    $layout = $userRole === 'doctor' ? 'layouts.doctor' : 'layouts.app';
+@endphp
+
+@extends($layout)
 
 @section('title', 'Edit Consultation')
 

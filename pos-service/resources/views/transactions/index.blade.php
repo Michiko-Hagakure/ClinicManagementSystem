@@ -63,7 +63,7 @@
                 </h6>
             </div>
             <div class="col-auto">
-                <span class="badge bg-primary">{{ $transactions->count() }} transactions</span>
+                <span class="badge bg-primary">{{ $transactions->total() }} transactions</span>
             </div>
         </div>
     </div>
@@ -87,74 +87,82 @@
                         @foreach($transactions as $transaction)
                         <tr>
                             <td>
-                                <strong>{{ $transaction->transaction_id }}</strong>
-                                <br><small class="text-muted">{{ $transaction->created_at->format('M d, Y') }}</small>
-                                <br><small class="text-muted">{{ $transaction->created_at->format('h:i A') }}</small>
+                                <strong>{{ $transaction->id }}</strong>
+                                <br><small class="text-muted">{{ \Carbon\Carbon::parse($transaction->created_at)->format('M d, Y') }}</small>
+                                <br><small class="text-muted">{{ \Carbon\Carbon::parse($transaction->created_at)->format('h:i A') }}</small>
                             </td>
                             <td>
-                                <div>
-                                    <strong>{{ $transaction->patient_name }}</strong>
-                                    @if($transaction->patient_id)
-                                        <br><small class="text-muted">ID: {{ $transaction->patient_id }}</small>
-                                    @endif
+                                <div class="text-primary fw-bold">{{ \Carbon\Carbon::parse($transaction->created_at)->format('g:i A') }}</div>
+                                <small class="text-muted">{{ \Carbon\Carbon::parse($transaction->created_at)->format('M d, Y') }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                        <i class="bi bi-person text-white small"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ $transaction->patient_name }}</div>
+                                        <small class="text-muted">ID: {{ $transaction->patient_id }}</small>
+                                    </div>
                                 </div>
                             </td>
                             <td>
                                 <div class="services-list">
-                                    <!-- Show services first -->
-                                    @if($transaction->service_total > 0)
+                                    @if(!empty($transaction->services))
                                         @foreach($transaction->services as $service)
-                                            @if(is_array($service))
-                                                @if($service['name'] !== 'Medicine Purchase')
-                                                    <span class="badge bg-primary me-1 mb-1">{{ $service['name'] }}</span>
-                                                @endif
+                                            @if(($service['category'] ?? '') === 'Medicine')
+                                                <span class="badge bg-success me-1 mb-1">
+                                                    <i class="bi bi-capsule me-1"></i>{{ $service['name'] }}
+                                                    @if(($service['quantity'] ?? 1) > 1)
+                                                        <span class="badge bg-light text-dark ms-1">x{{ $service['quantity'] }}</span>
+                                                    @endif
+                                                </span>
                                             @else
-                                                <span class="badge bg-primary me-1 mb-1">{{ $service }}</span>
+                                                <span class="badge bg-primary me-1 mb-1">{{ $service['name'] }}</span>
                                             @endif
                                         @endforeach
-                                    @endif
-                                    
-                                    <!-- Show medicines if any -->
-                                    @if(isset($transaction->medicines) && count($transaction->medicines) > 0)
-                                        @foreach($transaction->medicines as $medicine)
-                                            <span class="badge bg-success me-1 mb-1">
-                                                <i class="bi bi-prescription2 me-1"></i>{{ $medicine['name'] }} × {{ $medicine['quantity'] }}
-                                            </span>
-                                        @endforeach
-                                    @endif
-                                    
-                                    <!-- If medicine-only transaction with no detailed medicines -->
-                                    @if(isset($transaction->transaction_type) && $transaction->transaction_type === 'medicine_sale' && (!isset($transaction->medicines) || count($transaction->medicines) === 0))
-                                        <span class="badge bg-success">
-                                            <i class="bi bi-prescription2 me-1"></i>Medicine Sale
-                                        </span>
-                                    @endif
-                                </div>
-                            </td>
-                            <td>
-                                <div>
-                                    <strong>₱{{ number_format($transaction->total_amount, 2) }}</strong>
-                                    @if($transaction->service_total > 0 && $transaction->medicine_total > 0)
-                                        <!-- Combined transaction -->
-                                        <br><small class="text-muted">
-                                            <i class="bi bi-stethoscope me-1"></i>Services: ₱{{ number_format($transaction->service_total, 2) }}<br>
-                                            <i class="bi bi-prescription2 me-1"></i>Medicine: ₱{{ number_format($transaction->medicine_total, 2) }}
-                                        </small>
-                                    @elseif($transaction->medicine_total > 0)
-                                        <!-- Medicine only -->
-                                        <br><small class="text-success">
-                                            <i class="bi bi-prescription2 me-1"></i>Medicine Only
-                                        </small>
                                     @else
-                                        <!-- Services only -->
-                                        <br><small class="text-primary">
-                                            <i class="bi bi-stethoscope me-1"></i>Services Only
-                                        </small>
+                                        <span class="text-muted">No services</span>
                                     @endif
                                 </div>
                             </td>
                             <td>
-                                <span class="badge bg-info">{{ $transaction->payment_method }}</span>
+                                <div class="fw-bold text-success">₱{{ number_format($transaction->total_amount, 2) }}</div>
+                                <small class="text-muted">
+                                    @php
+                                        $hasServices = false;
+                                        $hasMedicines = false;
+                                        foreach($transaction->services ?? [] as $service) {
+                                            if (($service['category'] ?? '') === 'Medicine') {
+                                                $hasMedicines = true;
+                                            } else {
+                                                $hasServices = true;
+                                            }
+                                        }
+                                        
+                                        if ($hasServices && $hasMedicines) {
+                                            echo 'Services & Medicines';
+                                        } elseif ($hasMedicines) {
+                                            echo 'Medicines Only';
+                                        } elseif ($hasServices) {
+                                            echo 'Services Only';
+                                        } else {
+                                            echo 'No items';
+                                        }
+                                    @endphp
+                                </small>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column align-items-start">
+                                    @if($transaction->payment_method == 'Cash')
+                                        <span class="badge bg-success mb-1"><i class="bi bi-cash me-1"></i>{{ $transaction->payment_method }}</span>
+                                    @elseif(in_array($transaction->payment_method, ['Credit_card', 'Debit_card', 'Card']))
+                                        <span class="badge bg-info mb-1"><i class="bi bi-credit-card me-1"></i>Card</span>
+                                    @else
+                                        <span class="badge bg-secondary mb-1">{{ $transaction->payment_method }}</span>
+                                    @endif
+                                    <small class="text-muted">{{ $transaction->cashier }}</small>
+                                </div>
                             </td>
                             <td>
                                 <span class="badge bg-success">
@@ -162,13 +170,15 @@
                                 </span>
                             </td>
                             <td>
-                                <div class="btn-group" role="group">
-                                    <a href="{{ route('transactions.show', $transaction->transaction_id) }}" 
-                                       class="btn btn-sm btn-outline-primary" title="View Details">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-primary" 
+                                            onclick="viewTransaction('{{ $transaction->id }}')"
+                                            title="View Details">
                                         <i class="bi bi-eye"></i>
-                                    </a>
-                                    <button class="btn btn-sm btn-outline-success" 
-                                            onclick="printReceipt('{{ $transaction->transaction_id }}')" title="Print Receipt">
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" 
+                                            onclick="printReceipt('{{ $transaction->id }}')"
+                                            title="Print Receipt">
                                         <i class="bi bi-printer"></i>
                                     </button>
                                 </div>
@@ -197,6 +207,23 @@
             </div>
         @endif
     </div>
+    
+    <!-- Pagination -->
+    @if($transactions->hasPages())
+        <div class="card-footer bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <small class="text-muted">
+                        Showing {{ $transactions->firstItem() }} to {{ $transactions->lastItem() }} 
+                        of {{ $transactions->total() }} results
+                    </small>
+                </div>
+                <div>
+                    {{ $transactions->links() }}
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 <!-- Summary Stats -->
@@ -229,8 +256,8 @@
     <div class="col-md-3">
         <div class="card bg-warning text-white">
             <div class="card-body text-center">
-                <h4>₱{{ number_format($transactions->sum('medicine_total'), 2) }}</h4>
-                <small>Medicine Sales</small>
+                <h4>{{ $transactions->where('status', 'Paid')->count() }}</h4>
+                <small>Paid Transactions</small>
             </div>
         </div>
     </div>
@@ -240,6 +267,11 @@
 
 @section('scripts')
 <script>
+function viewTransaction(transactionId) {
+    // Redirect to transaction details page
+    window.location.href = `/transactions/${transactionId}`;
+}
+
 function printReceipt(transactionId) {
     // Open receipt in new window for printing
     const receiptUrl = `/transactions/${transactionId}?print=1`;

@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 mb-0 text-gray-800">Edit Patient Information</h1>
-        <small class="text-muted">Patient ID: {{ $patient->patient_id }} - {{ $patient->full_name }}</small>
+        <small class="text-muted">Patient ID: {{ $patient->patient_code }} - {{ $patient->full_name }}</small>
     </div>
     <div>
         <a href="{{ route('patients.show', $patient) }}" class="btn btn-outline-info me-2">
@@ -93,17 +93,17 @@
                                 <input type="text" 
                                        name="birth_date_display" 
                                        id="birth_date_display"
-                                       class="form-control form-control-lg @error('birth_date') is-invalid @enderror" 
+                                       class="form-control form-control-lg @error('date_of_birth') is-invalid @enderror" 
                                        placeholder="Click to select date"
                                        style="font-size: 1.1em; padding-right: 3rem; cursor: pointer;"
                                        readonly
                                        required>
-                                <input type="hidden" name="birth_date" id="birth_date_input" value="{{ $patient->birth_date->format('Y-m-d') }}">
+                                <input type="hidden" name="date_of_birth" id="birth_date_input" value="{{ optional($patient->date_of_birth)->format('Y-m-d') }}">
                                 <div class="calendar-icon-trigger" id="calendar-trigger" data-bs-toggle="modal" data-bs-target="#calendarModal" style="cursor: pointer;">
                                     <i class="bi bi-calendar3 text-primary"></i>
                                 </div>
                             </div>
-                            @error('birth_date')
+                            @error('date_of_birth')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -125,12 +125,13 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold" style="font-size: 1.1em;">Sex *</label>
-                            <select name="sex" class="form-select form-select-lg @error('sex') is-invalid @enderror" required style="font-size: 1.1em;">
+                            <select name="gender" class="form-select form-select-lg @error('gender') is-invalid @enderror" required style="font-size: 1.1em;">
                                 <option value="">Select Sex</option>
-                                <option value="Male" {{ old('sex', $patient->sex) == 'Male' ? 'selected' : '' }}>Male</option>
-                                <option value="Female" {{ old('sex', $patient->sex) == 'Female' ? 'selected' : '' }}>Female</option>
+                                <option value="male" {{ old('gender', $patient->gender) == 'male' ? 'selected' : '' }}>Male</option>
+                                <option value="female" {{ old('gender', $patient->gender) == 'female' ? 'selected' : '' }}>Female</option>
+                                <option value="other" {{ old('gender', $patient->gender) == 'other' ? 'selected' : '' }}>Other</option>
                             </select>
-                            @error('sex')
+                            @error('gender')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -236,29 +237,29 @@
                         <div class="col-md-6">
                             <label class="form-label fw-bold" style="font-size: 1.1em;">Contact Number *</label>
                             <input type="tel" 
-                                   name="contact_number" 
-                                   class="form-control form-control-lg @error('contact_number') is-invalid @enderror" 
-                                   value="{{ old('contact_number', $patient->contact_number) }}" 
+                                   name="phone_number" 
+                                   class="form-control form-control-lg @error('phone_number') is-invalid @enderror" 
+                                   value="{{ old('phone_number', $patient->phone_number) }}" 
                                    placeholder="09355102086"
                                    pattern="[0-9]{11}"
                                    maxlength="11"
                                    style="font-size: 1.2em; text-align: center; letter-spacing: 1px;"
                                    required>
                             <small class="text-muted">11-digit mobile number</small>
-                            @error('contact_number')
+                            @error('phone_number')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold" style="font-size: 1.1em;">Civil Status *</label>
-                            <select name="civil_staus" class="form-select form-select-lg @error('civil_staus') is-invalid @enderror" required style="font-size: 1.1em;">
+                            <select name="civil_status" class="form-select form-select-lg @error('civil_status') is-invalid @enderror" required style="font-size: 1.1em;">
                                 <option value="">Select Civil Status</option>
-                                <option value="Single" {{ old('civil_staus', $patient->civil_staus) == 'Single' ? 'selected' : '' }}>Single</option>
-                                <option value="Married" {{ old('civil_staus', $patient->civil_staus) == 'Married' ? 'selected' : '' }}>Married</option>
-                                <option value="Divorced" {{ old('civil_staus', $patient->civil_staus) == 'Divorced' ? 'selected' : '' }}>Divorced</option>
-                                <option value="Widowed" {{ old('civil_staus', $patient->civil_staus) == 'Widowed' ? 'selected' : '' }}>Widowed</option>
+                                <option value="Single" {{ old('civil_status', $patient->civil_status) == 'Single' ? 'selected' : '' }}>Single</option>
+                                <option value="Married" {{ old('civil_status', $patient->civil_status) == 'Married' ? 'selected' : '' }}>Married</option>
+                                <option value="Divorced" {{ old('civil_status', $patient->civil_status) == 'Divorced' ? 'selected' : '' }}>Divorced</option>
+                                <option value="Widowed" {{ old('civil_status', $patient->civil_status) == 'Widowed' ? 'selected' : '' }}>Widowed</option>
                             </select>
-                            @error('civil_staus')
+                            @error('civil_status')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -341,6 +342,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Format for display
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
         birthDateDisplay.value = existingDate.toLocaleDateString('en-US', options);
+        
+        // Set year and month dropdowns
+        if (monthDropdown && yearDropdown) {
+            monthDropdown.value = existingDate.getMonth();
+            yearDropdown.value = existingDate.getFullYear();
+        }
     }
     
     // Calculate age when date changes

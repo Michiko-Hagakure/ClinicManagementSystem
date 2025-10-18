@@ -73,7 +73,7 @@ return [
     |
     */
 
-    'connection' => env('SESSION_CONNECTION', 'mysql_auth'),
+    'connection' => env('SESSION_CONNECTION', 'auth_session'),
 
     /*
     |--------------------------------------------------------------------------
@@ -129,7 +129,7 @@ return [
 
     'cookie' => env(
         'SESSION_COOKIE',
-        Str::slug(env('APP_NAME', 'laravel'), '_').'_session'
+        'clinic_session'
     ),
 
     /*
@@ -156,7 +156,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN', '127.0.0.1'),
+    'domain' => env('SESSION_DOMAIN', '127.0.0.1:8002'),
 
     /*
     |--------------------------------------------------------------------------

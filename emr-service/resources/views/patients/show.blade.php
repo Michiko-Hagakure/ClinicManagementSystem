@@ -1,4 +1,10 @@
-@extends('layouts.app')
+@php
+    // Check if user is a doctor to use appropriate layout
+    $userRole = session('user_role') ?? session('role', '');
+    $layout = $userRole === 'doctor' ? 'layouts.doctor' : 'layouts.app';
+@endphp
+
+@extends($layout)
 
 @section('title', 'Patient Details - ' . $patient->full_name)
 
@@ -7,7 +13,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h1 class="h4 mb-0 text-gray-800">Patient Details</h1>
-        <small class="text-muted">Patient ID: {{ $patient->patient_id }}</small>
+        <small class="text-muted">Patient ID: {{ $patient->patient_code }}</small>
     </div>
     <div>
         <a href="{{ route('patients.edit', $patient) }}" class="btn btn-warning me-2">
@@ -36,7 +42,7 @@
                         </div>
                     </div>
                     <h5 class="mb-1">{{ $patient->full_name }}</h5>
-                    <span class="badge bg-primary">ID: {{ $patient->patient_id }}</span>
+                    <span class="badge bg-primary">ID: {{ $patient->patient_code }}</span>
                 </div>
                 
                 <div class="patient-info">

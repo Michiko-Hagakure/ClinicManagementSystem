@@ -11,7 +11,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Register custom middleware
+        $middleware->alias([
+            'auth.inventory' => \App\Http\Middleware\AuthMiddleware::class,
+        ]);
+        
+        // Exclude public API routes from CSRF verification (for server-to-server communication)
+        $middleware->validateCsrfTokens(except: [
+            'api/v1/public/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -16,17 +16,25 @@ class LabResult extends Model
     protected $fillable = [
         'patient_id',
         'test_name',
+        'test_type',
         'test_category',
-        'result',
+        'result', // Original field from first migration
+        'results', // New field from doctor upload migration
+        'file_attachments',
         'reference_range',
         'status',
         'test_date',
         'technician_name',
-        'notes'
+        'notes',
+        'doctor_notes',
+        'reviewed_at',
+        'reviewed_by'
     ];
 
     protected $casts = [
-        'test_date' => 'date'
+        'test_date' => 'datetime',
+        'reviewed_at' => 'datetime',
+        'file_attachments' => 'array'
     ];
 
     // Relationships

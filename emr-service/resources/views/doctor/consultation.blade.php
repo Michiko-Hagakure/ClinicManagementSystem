@@ -13,7 +13,7 @@
         <a href="{{ route('doctor.patient-queue') }}" class="btn btn-outline-primary">
             <i class="bi bi-arrow-left me-1"></i>Back to Queue
         </a>
-        <a href="{{ route('patients.show', $patient) }}" class="btn btn-outline-info">
+        <a href="{{ route('doctor.view-patient', $patient) }}" class="btn btn-outline-info">
             <i class="bi bi-file-earmark-person me-1"></i>Full Medical Record
         </a>
     </div>
@@ -112,17 +112,10 @@
             </div>
             <div class="card-body">
                 @if($todayConsultation)
-                    <form action="{{ route('doctor.consultation.update', $todayConsultation) }}" method="POST">
+                    <form action="{{ route('doctor.update-consultation', $todayConsultation) }}" method="POST">
                         @csrf
                         @method('PUT')
-                @else
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        No consultation record found for today. Please create one through the regular consultation system.
-                    </div>
-                @endif
-
-                @if($todayConsultation)
+                
                     <!-- Chief Complaint -->
                     <div class="mb-3">
                         <label for="chief_complaint" class="form-label fw-bold">Chief Complaint</label>
@@ -132,9 +125,9 @@
 
                     <!-- History of Present Illness -->
                     <div class="mb-3">
-                        <label for="history_present_illness" class="form-label fw-bold">History of Present Illness</label>
-                        <textarea class="form-control" id="history_present_illness" name="history_present_illness" rows="4" 
-                                  placeholder="Detailed history of the current condition...">{{ $todayConsultation->history_present_illness }}</textarea>
+                        <label for="patient_history_notes" class="form-label fw-bold">History of Present Illness</label>
+                        <textarea class="form-control" id="patient_history_notes" name="patient_history_notes" rows="4" 
+                                  placeholder="Detailed history of the current condition...">{{ $todayConsultation->patient_history_notes }}</textarea>
                     </div>
 
                     <!-- Physical Examination -->
@@ -146,9 +139,9 @@
 
                     <!-- Diagnosis -->
                     <div class="mb-3">
-                        <label for="diagnosis" class="form-label fw-bold">Diagnosis</label>
-                        <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3" 
-                                  placeholder="Primary and secondary diagnoses...">{{ $todayConsultation->diagnosis }}</textarea>
+                        <label for="assessment" class="form-label fw-bold">Diagnosis</label>
+                        <textarea class="form-control" id="assessment" name="assessment" rows="3" 
+                                  placeholder="Primary and secondary diagnoses...">{{ $todayConsultation->assessment }}</textarea>
                     </div>
 
                     <!-- Treatment Plan -->
@@ -160,26 +153,34 @@
 
                     <!-- Prescribed Medications -->
                     <div class="mb-3">
-                        <label for="prescribed_medications" class="form-label fw-bold">Prescribed Medications</label>
-                        <textarea class="form-control" id="prescribed_medications" name="prescribed_medications" rows="3" 
-                                  placeholder="Medications prescribed with dosage and instructions...">{{ $todayConsultation->prescribed_medications }}</textarea>
+                        <label for="medications_prescribed" class="form-label fw-bold">Prescribed Medications</label>
+                        <textarea class="form-control" id="medications_prescribed" name="medications_prescribed" rows="3" 
+                                  placeholder="Medications prescribed with dosage and instructions...">{{ $todayConsultation->medications_prescribed }}</textarea>
                     </div>
 
                     <!-- Follow-up Instructions -->
                     <div class="mb-3">
-                        <label for="follow_up_instructions" class="form-label fw-bold">Follow-up Instructions</label>
-                        <textarea class="form-control" id="follow_up_instructions" name="follow_up_instructions" rows="3" 
-                                  placeholder="When to return, what to watch for, etc...">{{ $todayConsultation->follow_up_instructions }}</textarea>
+                        <label for="patient_instructions" class="form-label fw-bold">Follow-up Instructions</label>
+                        <textarea class="form-control" id="patient_instructions" name="patient_instructions" rows="3" 
+                                  placeholder="When to return, what to watch for, etc...">{{ $todayConsultation->patient_instructions }}</textarea>
                     </div>
 
-                    <!-- Status -->
+                    <!-- Status - Auto-calculated -->
                     <div class="mb-4">
-                        <label for="status" class="form-label fw-bold">Consultation Status</label>
-                        <select class="form-select" id="status" name="status" required>
-                            <option value="pending" {{ $todayConsultation->status === 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="completed" {{ $todayConsultation->status === 'completed' ? 'selected' : '' }}>Completed</option>
-                            <option value="cancelled" {{ $todayConsultation->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-                        </select>
+                        <label class="form-label fw-bold">Consultation Status</label>
+                        <div class="alert alert-info mb-0" id="status-display">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <span id="status-text">
+                                @if($todayConsultation->status === 'completed')
+                                    <span class="badge bg-success">Completed</span> - All required fields filled
+                                @else
+                                    <span class="badge bg-warning">Pending</span> - Fill Chief Complaint and Diagnosis to mark as completed
+                                @endif
+                            </span>
+                        </div>
+                        <!-- Hidden field to store actual status (will be auto-set by backend) -->
+                        <input type="hidden" id="status" name="status" value="{{ $todayConsultation->status }}">
+                        <small class="text-muted">Status is automatically set based on Chief Complaint and Diagnosis</small>
                     </div>
 
                     <!-- Action Buttons -->
@@ -195,6 +196,11 @@
                         </a>
                     </div>
                     </form>
+                @else
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        No consultation record found for today. Please create one through the regular consultation system.
+                    </div>
                 @endif
             </div>
         </div>
@@ -226,10 +232,13 @@
                                                     <span class="text-muted">No date</span>
                                                 @endif
                                             </h6>
+                                            @if($consultation->consultation_date)
+                                                <small class="text-muted">{{ $consultation->consultation_date->format('g:i A') }}</small>
+                                            @endif
                                             <p class="mb-1"><strong>Chief Complaint:</strong> {{ $consultation->chief_complaint ?? 'Not recorded' }}</p>
-                                            <p class="mb-1"><strong>Diagnosis:</strong> {{ $consultation->diagnosis ?? 'Not recorded' }}</p>
-                                            @if($consultation->prescribed_medications)
-                                                <p class="mb-0"><strong>Medications:</strong> {{ Str::limit($consultation->prescribed_medications, 100) }}</p>
+                                            <p class="mb-1"><strong>Diagnosis:</strong> {{ $consultation->assessment ?? 'Not recorded' }}</p>
+                                            @if($consultation->medications_prescribed)
+                                                <p class="mb-0"><strong>Medications:</strong> {{ Str::limit($consultation->medications_prescribed, 100) }}</p>
                                             @endif
                                         </div>
                                         <span class="badge bg-{{ $consultation->status === 'completed' ? 'success' : 'warning' }}">
@@ -254,6 +263,39 @@
 </div>
 
 <script>
+// Update status display based on required fields
+function updateStatusDisplay() {
+    const chiefComplaint = document.getElementById('chief_complaint').value.trim();
+    const assessment = document.getElementById('assessment').value.trim();
+    const statusText = document.getElementById('status-text');
+    const statusInput = document.getElementById('status');
+    
+    if (chiefComplaint && assessment) {
+        statusText.innerHTML = '<span class="badge bg-success">Will be Completed</span> - All required fields filled';
+        statusInput.value = 'completed';
+    } else {
+        statusText.innerHTML = '<span class="badge bg-warning">Pending</span> - Fill Chief Complaint and Diagnosis to mark as completed';
+        statusInput.value = 'pending';
+    }
+}
+
+// Add event listeners to required fields
+document.addEventListener('DOMContentLoaded', function() {
+    const chiefComplaintField = document.getElementById('chief_complaint');
+    const assessmentField = document.getElementById('assessment');
+    
+    if (chiefComplaintField) {
+        chiefComplaintField.addEventListener('input', updateStatusDisplay);
+    }
+    
+    if (assessmentField) {
+        assessmentField.addEventListener('input', updateStatusDisplay);
+    }
+    
+    // Initial check
+    updateStatusDisplay();
+});
+
 function saveDraft() {
     // Auto-save functionality could be implemented here
     alert('Draft saved! (Feature to be implemented)');

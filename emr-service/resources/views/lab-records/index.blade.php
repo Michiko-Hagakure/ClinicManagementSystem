@@ -22,42 +22,42 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-md-4">
             <div class="card bg-primary text-white shadow-sm h-100">
-                <div class="card-body">
+                <div class="card-body py-3 px-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0">{{ $stats['total'] }}</h4>
-                            <small>Total Records</small>
+                            <h5 class="mb-0 fw-bold">{{ $stats['total'] }}</h5>
+                            <small class="text-white-50">Total Records</small>
                         </div>
-                        <i class="bi bi-journal-medical display-4"></i>
+                        <i class="bi bi-journal-medical" style="font-size: 2rem; opacity: 0.8;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         <div class="col-md-4">
             <div class="card bg-warning text-white shadow-sm h-100">
-                <div class="card-body">
+                <div class="card-body py-3 px-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0">{{ $stats['pending'] }}</h4>
-                            <small>Pending Results</small>
+                            <h5 class="mb-0 fw-bold">{{ $stats['pending'] }}</h5>
+                            <small class="text-white-50">Pending Results</small>
                         </div>
-                        <i class="bi bi-clock-history display-4"></i>
+                        <i class="bi bi-clock-history" style="font-size: 2rem; opacity: 0.8;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         <div class="col-md-4">
             <div class="card bg-success text-white shadow-sm h-100">
-                <div class="card-body">
+                <div class="card-body py-3 px-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="mb-0">{{ $stats['completed'] }}</h4>
-                            <small>Completed Results</small>
+                            <h5 class="mb-0 fw-bold">{{ $stats['completed'] }}</h5>
+                            <small class="text-white-50">Completed Results</small>
                         </div>
-                        <i class="bi bi-check2-circle display-4"></i>
+                        <i class="bi bi-check2-circle" style="font-size: 2rem; opacity: 0.8;"></i>
                     </div>
                 </div>
             </div>
@@ -171,7 +171,7 @@
                             <tr>
                                 <th style="width: 15%;">Patient</th>
                                 <th style="width: 15%;">Test Info</th>
-                                <th style="width: 15%;">Date & Time</th>
+                                <th style="width: 15%;">Uploaded</th>
                                 <th style="width: 10%;">Priority</th>
                                 <th style="width: 15%;">Status</th>
                                 <th style="width: 15%;">Staff</th>
@@ -187,8 +187,8 @@
                                                 <i class="bi bi-person text-white"></i>
                                             </div>
                                             <div>
-                                                <div class="fw-bold">{{ $labResult->patient->full_name }}</div>
-                                                <small class="text-muted">ID: {{ $labResult->patient->patient_id }}</small>
+                                                <div class="fw-bold">{{ $labResult->patient->full_name ?? ($labResult->consultation?->patient?->full_name ?? 'Unknown Patient') }}</div>
+                                                <small class="text-muted">ID: {{ $labResult->patient->id ?? ($labResult->consultation?->patient?->id ?? 'N/A') }}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -200,15 +200,15 @@
                                     </td>
                                     <td>
                                         <div class="fw-bold">
-                                            @if($labResult->test_date)
-                                                {{ $labResult->test_date->format('M d, Y') }}
+                                            @if($labResult->created_at)
+                                                {{ $labResult->created_at->format('M d, Y') }}
                                             @else
                                                 <span class="text-muted">No date</span>
                                             @endif
                                         </div>
                                         <small class="text-muted">
-                                            @if($labResult->test_date)
-                                                {{ $labResult->test_date->format('g:i A') }}
+                                            @if($labResult->created_at)
+                                                {{ $labResult->created_at->format('g:i A') }}
                                             @else
                                                 No time
                                             @endif
@@ -398,6 +398,31 @@
 
 <!-- Enhanced Senior-Friendly Styles -->
 <style>
+/* Compact Statistics Cards */
+.card.bg-primary, .card.bg-warning, .card.bg-success {
+    min-height: auto !important;
+}
+
+.card.bg-primary .card-body,
+.card.bg-warning .card-body,
+.card.bg-success .card-body {
+    padding: 1rem 1rem !important;
+}
+
+.card.bg-primary h5,
+.card.bg-warning h5,
+.card.bg-success h5 {
+    font-size: 1.5rem !important;
+    line-height: 1.2 !important;
+}
+
+.card.bg-primary small,
+.card.bg-warning small,
+.card.bg-success small {
+    font-size: 0.8rem !important;
+    opacity: 0.9 !important;
+}
+
 .form-control-lg, .form-select-lg {
     font-size: 1.1em !important;
     padding: 0.75rem 1rem !important;

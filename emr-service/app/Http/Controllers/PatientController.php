@@ -17,23 +17,33 @@ class PatientController extends Controller
     {
         // Check if this is an API request for Select2
         if ($request->ajax() || $request->wantsJson()) {
-            $query = $request->input('q');
+            $query = $request->input('q', '');
 
             $patients = Patient::where(function ($q) use ($query) {
-                $q->where('first_name', 'LIKE', "%{$query}%")
-                  ->orWhere('last_name', 'LIKE', "%{$query}%")
-                  ->orWhere('phone_number', 'LIKE', "%{$query}%");
+                if (!empty($query)) {
+                    $q->where('first_name', 'LIKE', "%{$query}%")
+                      ->orWhere('last_name', 'LIKE', "%{$query}%")
+                      ->orWhere('phone_number', 'LIKE', "%{$query}%");
 
-                if (is_numeric($query)) {
-                    $q->orWhere('id', $query);
+                    if (is_numeric($query)) {
+                        $q->orWhere('id', $query);
+                    }
                 }
-            })->limit(10)->get();
+            })
+            ->orderBy('id', 'desc')
+            ->limit(20)
+            ->get();
 
-            // Format for Select2
+            // Return full patient data for Select2
             return response()->json($patients->map(function ($patient) {
                 return [
                     'id' => $patient->id,
-                    'text' => $patient->full_name . ' (ID: ' . $patient->id . ') - ' . $patient->age . ' yrs',
+                    'full_name' => $patient->full_name,
+                    'age' => $patient->age ?? 'N/A',
+                    'gender' => $patient->gender ?? 'N/A',
+                    'phone' => $patient->phone_number ?? 'N/A',
+                    'patient_code' => $patient->patient_code ?? 'P' . str_pad($patient->id, 4, '0', STR_PAD_LEFT),
+                    'text' => $patient->full_name . ' (ID: ' . ($patient->patient_code ?? 'P' . str_pad($patient->id, 4, '0', STR_PAD_LEFT)) . ') - ' . ($patient->age ?? 'N/A') . ' yrs'
                 ];
             }));
         }
@@ -48,6 +58,11 @@ class PatientController extends Controller
                 $q->where('first_name', 'LIKE', "%{$search}%")
                   ->orWhere('last_name', 'LIKE', "%{$search}%")
                   ->orWhere('phone_number', 'LIKE', "%{$search}%");
+                  
+                // Also search by patient code if numeric
+                if (is_numeric($search)) {
+                    $q->orWhere('id', $search);
+                }
             });
         }
 
@@ -71,20 +86,29 @@ class PatientController extends Controller
     {
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'date_of_birth' => 'required|date',
-            'gender' => ['required', Rule::in(['male', 'female', 'other'])],
+            'age' => 'nullable|integer',
+            'gender' => ['required', Rule::in(['Male', 'Female', 'male', 'female', 'other'])],
             'civil_status' => ['required', Rule::in(['Single', 'Married', 'Divorced', 'Widowed'])],
             'contact_number' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
+            'district' => 'nullable|string|max:255',
+            'barangay' => 'nullable|string|max:255',
+            'street' => 'nullable|string|max:255',
+            'zip_code' => 'nullable|string|max:10',
             'address' => 'nullable|string|max:500',
+            'email' => 'nullable|email|max:255',
             'emergency_contact_name' => 'nullable|string|max:255',
             'emergency_contact_phone' => 'nullable|string|max:255',
         ]);
 
-        // Manually map contact_number to phone_number
+        // Map contact_number to phone_number for database storage
         $validated['phone_number'] = $validated['contact_number'];
         unset($validated['contact_number']);
+        
+        // Normalize gender to lowercase for consistency
+        $validated['gender'] = strtolower($validated['gender']);
 
         $patient = Patient::create($validated);
 
@@ -95,8 +119,30 @@ class PatientController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Patient $patient)
+    public function show(Patient $patient, Request $request)
     {
+        // Check if this is an API request
+        if ($request->wantsJson() || $request->is('api/*')) {
+            return response()->json([
+                'id' => $patient->id,
+                'patient_code' => 'P' . str_pad($patient->id, 4, '0', STR_PAD_LEFT),
+                'first_name' => $patient->first_name,
+                'last_name' => $patient->last_name,
+                'middle_name' => $patient->middle_name,
+                'full_name' => $patient->full_name,
+                'date_of_birth' => $patient->date_of_birth,
+                'gender' => $patient->gender,
+                'phone' => $patient->phone_number,
+                'age' => $patient->age,
+                'civil_status' => $patient->civil_status,
+                'address' => $patient->address ?? '',
+                'email' => $patient->email,
+                'created_at' => $patient->created_at,
+                'updated_at' => $patient->updated_at
+            ]);
+        }
+        
+        // Web request - return view
         $patient->load(['consultations.labResults', 'labResults']);
         
         return view('patients.show', compact('patient'));
@@ -117,20 +163,17 @@ class PatientController extends Controller
     {
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'date_of_birth' => 'required|date',
             'gender' => ['required', Rule::in(['male', 'female', 'other'])],
             'civil_status' => ['required', Rule::in(['Single', 'Married', 'Divorced', 'Widowed'])],
-            'contact_number' => 'required|string|max:20',
+            'phone_number' => 'required|string|max:20',
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:500',
             'emergency_contact_name' => 'nullable|string|max:255',
             'emergency_contact_phone' => 'nullable|string|max:255',
         ]);
-
-        // Manually map contact_number to phone_number
-        $validated['phone_number'] = $validated['contact_number'];
-        unset($validated['contact_number']);
 
         $patient->update($validated);
 
@@ -141,20 +184,21 @@ class PatientController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Patient $patient)
-    {
-        $patient->delete();
-
-        return redirect()->route('patients.index')
-                        ->with('success', 'Patient record deleted successfully.');
-    }
+    // Patient records should not be deleted in a clinic setting
+    // public function destroy(Patient $patient)
+    // {
+    //     $patient->delete();
+    //
+    //     return redirect()->route('patients.index')
+    //                     ->with('success', 'Patient record deleted successfully.');
+    // }
 
     /**
      * Get patient consultations
      */
     public function consultations(Patient $patient)
     {
-        $consultations = $patient->consultations()->with('labResults')->orderBy('date', 'desc')->get();
+        $consultations = $patient->consultations()->with('labResults')->orderBy('consultation_date', 'desc')->get();
         
         return view('patients.consultations', compact('patient', 'consultations'));
     }
@@ -164,7 +208,7 @@ class PatientController extends Controller
      */
     public function labResults(Patient $patient)
     {
-        $labResults = $patient->labResults()->with('consultation')->orderBy('date', 'desc')->get();
+        $labResults = $patient->labResults()->with('consultation')->orderBy('test_date', 'desc')->get();
         
         return view('patients.lab-results', compact('patient', 'labResults'));
     }

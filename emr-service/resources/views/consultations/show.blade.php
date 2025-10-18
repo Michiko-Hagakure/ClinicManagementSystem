@@ -1,4 +1,10 @@
-@extends('layouts.app')
+@php
+    // Check if user is a doctor to use appropriate layout
+    $userRole = session('user_role') ?? session('role', '');
+    $layout = $userRole === 'doctor' ? 'layouts.doctor' : 'layouts.app';
+@endphp
+
+@extends($layout)
 
 @section('title', 'Consultation Details')
 
@@ -47,32 +53,32 @@
                         
                         <div class="info-item mb-2">
                             <strong>Patient ID:</strong>
-                            <span class="text-muted">{{ $consultation->patient->patient_id }}</span>
+                            <span class="text-muted">{{ $consultation->patient->patient_code }}</span>
                         </div>
                         
                         <div class="info-item mb-2">
                             <strong>Age & Gender:</strong>
-                            <span class="text-muted">{{ $consultation->patient->age }} years, {{ $consultation->patient->sex }}</span>
+                            <span class="text-muted">{{ $consultation->patient->age ?? 'N/A' }} years, {{ $consultation->patient->gender ?? 'N/A' }}</span>
                         </div>
                         
                         <div class="info-item mb-2">
                             <strong>Birth Date:</strong>
-                            <span class="text-muted">{{ $consultation->patient->birth_date->format('M d, Y') }}</span>
+                            <span class="text-muted">{{ optional($consultation->patient->birth_date)->format('M d, Y') ?? 'Not recorded' }}</span>
                         </div>
                         
                         <div class="info-item mb-2">
                             <strong>Contact:</strong>
-                            <span class="text-muted">{{ $consultation->patient->contact_number }}</span>
+                            <span class="text-muted">{{ $consultation->patient->phone_number ?? 'N/A' }}</span>
                         </div>
                         
                         <div class="info-item mb-2">
                             <strong>Address:</strong>
-                            <span class="text-muted">{{ $consultation->patient->address }}</span>
+                            <span class="text-muted">{{ $consultation->patient->address ?? 'N/A' }}</span>
                         </div>
                         
                         <div class="info-item">
                             <strong>Civil Status:</strong>
-                            <span class="text-muted">{{ $consultation->patient->civil_staus }}</span>
+                            <span class="text-muted">{{ $consultation->patient->civil_status ?? 'N/A' }}</span>
                         </div>
                     </div>
                     

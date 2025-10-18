@@ -26,24 +26,25 @@ class AuthController extends Controller
     public function login(Request $request): RedirectResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'employee_id' => 'required|string|size:6',
             'password' => 'required',
         ]);
 
-        Log::info('Login attempt', ['email' => $request->email]);
+        Log::info('Login attempt', ['employee_id' => $request->employee_id]);
 
-        $credentials = $request->only('email', 'password');
+        // Find user by employee_id
+        $user = User::where('employee_id', $request->employee_id)->first();
         
-        if (Auth::attempt($credentials)) {
+        if ($user && Hash::check($request->password, $user->password)) {
+            Auth::login($user);
             $request->session()->regenerate();
 
             Log::info('Login successful, session regenerated', [
                 'user_id' => Auth::id(),
+                'employee_id' => $user->employee_id,
                 'session_id' => session()->getId(),
                 'session_data' => session()->all(),
             ]);
-
-            $user = Auth::user();
 
             $token = $user->createToken('auth-token')->plainTextToken;
             session(['api_token' => $token]);
@@ -53,19 +54,22 @@ class AuthController extends Controller
             session(['user_name' => $user->name]);
             session(['user_email' => $user->email]);
             session(['user_role' => $user->role]);
+            session(['user_department' => $user->department]);
+            session(['user_profile_picture' => $user->profile_picture_url]);
+            session(['user_employee_id' => $user->employee_id]);
             
             session()->save();
 
             // Role-based redirection
-            \Illuminate\Support\Facades\Log::info('User authenticated, redirecting...', ['user' => $user->email, 'role' => $user->role]);
+            Log::info('User authenticated, redirecting...', ['employee_id' => $user->employee_id, 'role' => $user->role]);
             return $this->redirectUserByRole($user->role);
         }
 
-        Log::warning('Login failed', ['email' => $request->email]);
+        Log::warning('Login failed', ['employee_id' => $request->employee_id]);
 
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ])->withInput($request->only('email'));
+            'employee_id' => 'The provided credentials do not match our records.',
+        ])->withInput($request->only('employee_id'));
     }
 
     /**
@@ -87,20 +91,33 @@ class AuthController extends Controller
     private function redirectUserByRole(string $role): RedirectResponse
     {
         switch ($role) {
+            case 'admin':
+                // Redirect to Admin Panel for user management
+                return redirect()->route('admin.users.index');
+
             case 'cashier':
                 // Redirect to POS Service dashboard (port 8002)
                 return redirect()->away('http://127.0.0.1:8002/dashboard');
+
+            case 'pharmacist':
+                // Redirect to Pharmacy/Inventory Service dashboard (port 8003)
+                return redirect()->away('http://127.0.0.1:8003/pharmacy/dashboard');
 
             case 'doctor':
                 // Redirect to Doctor Portal in EMR (port 8001)
                 return redirect()->away('http://127.0.0.1:8001/doctor');
 
-            case 'clinic_staff':
             case 'medical_staff':
+                // Redirect to EMR Dashboard (port 8001)
+                return redirect()->away('http://127.0.0.1:8001/');
+                
             case 'owner':
+                // Redirect to Owner Dashboard with consolidated reports
+                return redirect()->route('owner.dashboard');
+
             default:
                 // Redirect to EMR Dashboard (port 8001)
-                return redirect()->away('http://127.0.0.1:8001/dashboard');
+                return redirect()->away('http://127.0.0.1:8001/');
         }
     }
 

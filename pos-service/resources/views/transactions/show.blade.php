@@ -70,6 +70,47 @@
     </div>
 </div>
 
+<!-- Appointment Details Card -->
+<div class="card shadow mt-4">
+    <div class="card-header bg-secondary text-white">
+        <h6 class="m-0 font-weight-bold">
+            <i class="bi bi-calendar-check me-2"></i>Appointment Details
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="info-item mb-3">
+                    <strong><i class="bi bi-person-badge me-1"></i>Assigned Doctor:</strong>
+                    <div class="text-primary">{{ $transaction->assigned_doctor ?? 'Not assigned' }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-item mb-3">
+                    <strong><i class="bi bi-clock me-1"></i>Appointment Time:</strong>
+                    <div class="text-info">{{ $transaction->appointment_time ?? 'N/A' }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-item mb-3">
+                    <strong><i class="bi bi-door-open me-1"></i>Room Number:</strong>
+                    <div class="text-success">{{ $transaction->room_number ?? 'N/A' }}</div>
+                </div>
+            </div>
+        </div>
+        @if(!empty($transaction->notes))
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="alert alert-info mb-0">
+                    <strong><i class="bi bi-sticky me-1"></i>Additional Notes:</strong>
+                    <p class="mb-0 mt-2">{{ $transaction->notes }}</p>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+</div>
+
 <!-- Services Section -->
 @if(!empty($transaction->services))
 <div class="card shadow mt-4">

@@ -15,6 +15,7 @@ class Consultation extends Model
 
     protected $fillable = [
         'patient_id',
+        'doctor_name',
         'consultation_date',
         'chief_complaint',
         'consultation_notes',
@@ -36,7 +37,7 @@ class Consultation extends Model
     ];
 
     protected $casts = [
-        'consultation_date' => 'date',
+        'consultation_date' => 'datetime',
         'follow_up_date' => 'date'
     ];
 

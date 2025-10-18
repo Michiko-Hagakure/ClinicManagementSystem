@@ -246,28 +246,14 @@
                                     </td>
                                     <td>
                                         <div class="d-flex gap-1 flex-wrap">
-                                            @if($labResult->status === 'pending')
-                                                <form action="{{ route('lab-records.update', $labResult) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('PUT')
-                                                    <input type="hidden" name="status" value="in_progress">
-                                                    <button type="submit" class="btn btn-success btn-sm">
-                                                        <i class="bi bi-play me-1"></i>Start
-                                                    </button>
-                                                </form>
-                                            @elseif($labResult->status === 'in_progress')
-                                                <a href="{{ route('lab-records.edit', $labResult) }}" class="btn btn-warning btn-sm">
-                                                    <i class="bi bi-pencil me-1"></i>Continue
-                                                </a>
-                                            @endif
-                                            
+                                            <!-- Staff can only view lab results -->
                                             <a href="{{ route('lab-records.show', $labResult) }}" class="btn btn-outline-info btn-sm">
-                                                <i class="bi bi-eye me-1"></i>View
+                                                <i class="bi bi-eye me-1"></i>View Details
                                             </a>
                                             
-                                            @if($labResult->status !== 'reviewed')
-                                                <a href="{{ route('lab-records.edit', $labResult) }}" class="btn btn-outline-warning btn-sm">
-                                                    <i class="bi bi-pencil me-1"></i>Edit
+                                            @if($labResult->consultation)
+                                                <a href="{{ route('consultations.show', $labResult->consultation) }}" class="btn btn-outline-secondary btn-sm">
+                                                    <i class="bi bi-file-earmark-medical me-1"></i>Related Consultation
                                                 </a>
                                             @endif
                                         </div>
@@ -287,10 +273,7 @@
                 <div class="text-center py-5">
                     <i class="bi bi-{{ $department === 'laboratory' ? 'flask' : ($department === 'radiology' ? 'x-ray' : 'heart-pulse') }} display-1 text-muted"></i>
                     <h5 class="mt-3 text-muted">No {{ $department }} records found</h5>
-                    <p class="text-muted">Start by creating the first {{ $department }} test for your patients.</p>
-                    <a href="{{ route('lab-records.create') }}?type={{ $department === 'laboratory' ? 'Laboratory' : ($department === 'radiology' ? 'X-ray' : 'Ultrasound') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-lg me-2"></i>Create First {{ ucfirst($department) }} Test
-                    </a>
+                    <p class="text-muted">{{ ucfirst($department) }} tests will appear here when doctors upload them.</p>
                 </div>
             @endif
         </div>

@@ -11,48 +11,77 @@ class CheckAuthService
 {
     public function handle(Request $request, Closure $next)
     {
-        // Temporary bypass to restore access while cross-service auth is stabilized
-        if (env('POS_BYPASS_AUTH', true)) {
-            Log::warning('CheckAuthService: Bypassing external auth (POS_BYPASS_AUTH=true).');
+        // First, check if the user is already authenticated in this service's session.
+        if (session('authenticated')) {
             return $next($request);
         }
 
-        // Get the auth service URL from config, with a default
-        $authServiceUrl = config('services.auth.base_url', 'http://127.0.0.1:8000');
-
-        Log::info('CheckAuthService: Running auth check.', ['url' => "{$authServiceUrl}/api/user"]);
-
+        // If not, try to authenticate against the auth service.
         try {
-            // Forward the session cookie to the auth service to check for an active session
-            $response = Http::withHeaders([
+            $tokenResponse = Http::withHeaders([
                 'Cookie' => $request->header('Cookie'),
-                'Referer' => $request->header('Referer'),
-                'Accept' => 'application/json',
-            ])->get("{$authServiceUrl}/api/user");
+            ])->get('http://127.0.0.1:8000/api/auth/token');
 
-            if ($response->successful()) {
-                // If the auth service returns a user, the session is valid.
-                // We can store a local flag to minimize API calls.
-                session(['authenticated_pos' => true, 'user' => $response->json()]);
-                Log::info('CheckAuthService: Auth check successful.', ['user_id' => $response->json('id')]);
-                return $next($request);
+            if ($tokenResponse->successful() && $tokenResponse->json('api_token')) {
+                $token = $tokenResponse->json('api_token');
+
+                // Now, use the token to check authentication
+                $authResponse = Http::withToken($token)->withHeaders([
+                    'Accept' => 'application/json',
+                ])->get('http://127.0.0.1:8000/api/auth/check');
+
+
+                if ($authResponse->successful() && $authResponse->json('authenticated')) {
+                    $userData = $authResponse->json('user');
+                    
+                    // Fetch full user details including profile picture
+                    try {
+                        $userDetailResponse = Http::get('http://127.0.0.1:8000/api/users/' . $userData['id']);
+                        if ($userDetailResponse->successful()) {
+                            $fullUserData = $userDetailResponse->json();
+                            
+                            // Store session data with correct keys
+                            session([
+                                'authenticated' => true,
+                                'api_token' => $token,
+                                'user_id' => $fullUserData['id'],
+                                'user_name' => $fullUserData['name'],
+                                'user_email' => $fullUserData['email'],
+                                'user_role' => $fullUserData['role'],
+                                'user_department' => $fullUserData['department'] ?? null,
+                                'user_profile_picture' => $fullUserData['profile_picture_url'] ?? null,
+                                'user_employee_id' => $fullUserData['employee_id'] ?? null,
+                            ]);
+                            
+                            Log::info('User session synced from auth service', [
+                                'user_id' => $fullUserData['id'],
+                                'name' => $fullUserData['name'],
+                                'role' => $fullUserData['role']
+                            ]);
+                            
+                            return $next($request);
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('Could not fetch full user details: ' . $e->getMessage());
+                    }
+                    
+                    // Fallback: store basic user data
+                    session([
+                        'authenticated' => true,
+                        'api_token' => $token,
+                        'user_id' => $userData['id'],
+                        'user_name' => $userData['name'],
+                        'user_email' => $userData['email'],
+                        'user_role' => $userData['role'],
+                    ]);
+                    
+                    return $next($request);
+                }
             }
-
-            // Log the failed auth attempt
-            Log::warning('CheckAuthService: Auth check failed.', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'url' => "{$authServiceUrl}/api/user",
-            ]);
-
         } catch (\Exception $e) {
-            Log::error('CheckAuthService: Could not connect to auth service.', [
-                'error' => $e->getMessage(),
-                'url' => "{$authServiceUrl}/api/user",
-            ]);
+            Log::error('Could not connect to auth service: ' . $e->getMessage());
         }
 
-        // If the check fails for any reason, redirect to the main login page
-        return redirect()->away($authServiceUrl . '/login');
+        return redirect()->away('http://127.0.0.1:8000/login');
     }
 }
