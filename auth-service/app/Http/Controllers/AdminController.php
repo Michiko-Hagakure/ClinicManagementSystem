@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -86,6 +87,16 @@ class AdminController extends Controller
         
         $user = User::create($validated);
 
+        // Log audit trail
+        AuditLog::log(
+            'create',
+            'User',
+            $user->id,
+            "Created user account for {$user->name} with role {$user->role}",
+            null,
+            $user->only(['name', 'email', 'role', 'department', 'is_active'])
+        );
+
         return redirect()->route('admin.users.index')
             ->with('success', "User account created successfully for {$user->name}!");
     }
@@ -106,6 +117,8 @@ class AdminController extends Controller
      */
     public function update(Request $request, User $user)
     {
+        $oldValues = $user->only(['name', 'email', 'role', 'department']);
+        
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
@@ -115,7 +128,9 @@ class AdminController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        if (!empty($validated['password'])) {
+        $passwordChanged = !empty($validated['password']);
+        
+        if ($passwordChanged) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
@@ -125,6 +140,27 @@ class AdminController extends Controller
         unset($validated['is_active']);
 
         $user->update($validated);
+
+        // Log audit trail
+        AuditLog::log(
+            'update',
+            'User',
+            $user->id,
+            "Updated user account for {$user->name}" . ($passwordChanged ? ' (password changed)' : ''),
+            $oldValues,
+            $user->only(['name', 'email', 'role', 'department'])
+        );
+
+        if ($passwordChanged) {
+            AuditLog::log(
+                'password_change',
+                'User',
+                $user->id,
+                "Changed password for user {$user->name}",
+                null,
+                null
+            );
+        }
 
         return redirect()->route('admin.users.index')
             ->with('success', "User account updated successfully for {$user->name}!");
@@ -141,7 +177,20 @@ class AdminController extends Controller
         }
 
         $userName = $user->name;
+        $userId = $user->id;
+        $userDetails = $user->only(['name', 'email', 'role', 'department']);
+        
         $user->delete();
+
+        // Log audit trail
+        AuditLog::log(
+            'delete',
+            'User',
+            $userId,
+            "Deleted user account for {$userName}",
+            $userDetails,
+            null
+        );
 
         return redirect()->route('admin.users.index')
             ->with('success', "User account for {$userName} deleted successfully.");
@@ -152,12 +201,54 @@ class AdminController extends Controller
      */
     public function toggleStatus(User $user)
     {
+        $oldStatus = $user->is_active;
         $user->is_active = !$user->is_active;
         $user->save();
 
         $status = $user->is_active ? 'activated' : 'deactivated';
 
+        // Log audit trail
+        AuditLog::log(
+            'toggle_status',
+            'User',
+            $user->id,
+            "Changed status for {$user->name} to " . ($user->is_active ? 'active' : 'inactive'),
+            ['is_active' => $oldStatus],
+            ['is_active' => $user->is_active]
+        );
+
         return back()->with('success', "User {$user->name} has been {$status}.");
+    }
+
+    /**
+     * Display audit logs
+     */
+    public function auditLogs(Request $request)
+    {
+        $query = AuditLog::with('user')->orderBy('created_at', 'desc');
+
+        // Filter by action
+        if ($request->filled('action')) {
+            $query->where('action', $request->action);
+        }
+
+        // Filter by user who performed the action
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        // Filter by date range
+        if ($request->filled('from_date')) {
+            $query->whereDate('created_at', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('created_at', '<=', $request->to_date);
+        }
+
+        $logs = $query->paginate(50)->withQueryString();
+        $users = User::orderBy('name')->get();
+
+        return view('admin.audit-logs', compact('logs', 'users'));
     }
 
     /**

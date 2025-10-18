@@ -120,6 +120,10 @@
                 <i class="bi bi-people"></i>
                 <span>User Management</span>
             </a>
+            <a href="{{ route('admin.audit-logs') }}" class="{{ request()->routeIs('admin.audit-logs') ? 'active' : '' }}">
+                <i class="bi bi-shield-check"></i>
+                <span>Audit Logs</span>
+            </a>
         </div>
 
         <hr style="background-color: rgba(255, 255, 255, 0.3); border: none; height: 1px; margin: 1rem 0;">

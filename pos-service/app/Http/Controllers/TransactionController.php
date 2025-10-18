@@ -10,6 +10,7 @@ use App\Models\MedicalBill;
 use App\Models\BillItem;
 use Illuminate\Support\Facades\Log;
 use App\Services\EmrApiService;
+use App\Helpers\ServiceHealthHelper;
 
 class TransactionController extends Controller
 {
@@ -364,13 +365,32 @@ class TransactionController extends Controller
         
         file_put_contents($transactionsFile, json_encode($existingTransactions, JSON_PRETTY_PRINT));
         
+        // Check service health
+        $emrHealthy = ServiceHealthHelper::isEmrHealthy();
+        $warnings = [];
+        
         // Create appointment in EMR if patient has an ID (not walk-in)
         if (!empty($validated['patient_id']) && $validated['patient_id'] !== 'WALK-IN') {
-            $this->createEmrAppointment($validated, $transactionId);
+            if ($emrHealthy) {
+                $this->createEmrAppointment($validated, $transactionId);
+            } else {
+                $warnings[] = ServiceHealthHelper::getServiceErrorMessage('emr');
+                Log::warning('EMR service unavailable during transaction', [
+                    'transaction_id' => $transactionId
+                ]);
+            }
+        }
+        
+        $successMessage = "Transaction {$transactionId} processed successfully! Receipt printed.";
+        
+        if (!empty($warnings)) {
+            return redirect()->route('transactions.index')
+                ->with('success', $successMessage)
+                ->with('warning', implode(' ', $warnings));
         }
         
         return redirect()->route('transactions.index')
-            ->with('success', "Transaction {$transactionId} processed successfully! Receipt printed.");
+            ->with('success', $successMessage);
     }
     
     /**
